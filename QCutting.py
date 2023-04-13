@@ -47,7 +47,13 @@ def printClustering(G,solution):
    nx.draw_networkx(G,nx.get_node_attributes(G,'pos'), node_color=colors,with_labels=True,edgelist=[])
    plt.show()  
    
-
+def printGraphWithWeights(G,solution):
+   labels=nx.get_edge_attributes(G,'weight')
+   labels= {k:str(v)[:4] for k, v in labels.items()}
+   nx.draw_networkx_edge_labels(G,nx.get_node_attributes(G,'pos'),edge_labels=labels,bbox=dict(alpha=0))
+   print(nx.get_edge_attributes(G,'weight'))
+   printClustering(G,solution)
+   plt.show()
 
 
 def mincut_obj(solution, graph):
@@ -167,25 +173,23 @@ if __name__=="__main__":
        
     
    get_expectation(G)
-   res = minimize(get_expectation(G),[1.0, 1.0,1.0,1.0],method='COBYLA') #get_expectation returns the function execute_circ which takes in a 
+   res = minimize(get_expectation(G),[1.0, 1.0],method='COBYLA') #get_expectation returns the function execute_circ which takes in a 
    #1D vector of even dimension. 
-   print(res)
-   backend = Aer.get_backend('aer_simulator')
+   backend = Aer.get_backend('qasm_simulator')
    backend.shots = 512
 
    # Adjacency is essentially a matrix which tells you which nodes are connected. This matrix is given as a sparse matrix, so we need to
    # convert it to a dense matrix
    adjacency = nx.adjacency_matrix(G).todense()
-   nqubits = len(points) #each qubit corresponds to a vertex in the graph and each boolean assignment for each point corresponds with what side of the cut the vertex is in. 
+   nqubits = len(points) #each qubit corresponds to a vertex in the graph and each boolean assignment for each point corresponds with 
+   #what side of the cut the vertex is in. 
 
    qc_res = createQAOACirc(G, res.x)
-   createQAOACirc(G, res.x).draw()
-   plt.show()
+   createQAOACirc(G, res.x).draw(output="mpl")
    plt.show()
    counts =backend.run(qc_res, seed_simulator=10).result().get_counts()
    #we need to sort to get the bar chart in decent order
    sorted_counts = sorted(counts.items())
-
    # extract the keys and values from the sorted dictionary
    keys = [item[0] for item in sorted_counts]
    values = [item[1] for item in sorted_counts]
@@ -196,6 +200,7 @@ if __name__=="__main__":
 
 bestSolution= max(counts, key=counts.get)
 printClustering(G,bestSolution)
+printGraphWithWeights(G,bestSolution)
 # create a scatter plot with colored points
 #plt.scatter([p[0] for p in points], [p[1] for p in points], c=colors, cmap='cool', vmin=0, vmax=1)
 plt.show()
