@@ -24,6 +24,9 @@ def info_matrix(qc, conv=complex):
    print([conv(y) for y in [z for z in np.array(qk.quantum_info.Operator(qc))]])
 
 qc=qk.QuantumCircuit(2)
+qc2=qk.QuantumCircuit(2)
+qc2.h(0)
+
 qc.h(0)
 qc.cx(0,1)
 print(qk.quantum_info.Operator(qc))
