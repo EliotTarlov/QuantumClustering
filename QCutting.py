@@ -6,7 +6,7 @@ import networkx as nx
 from itertools import combinations_with_replacement
 import argparse
 from scipy.optimize import minimize
-
+np.set_printoptions(linewidth=np.inf)#so matricies don't wrap as often
 
 def createRandomScattering(num_points,scale=1,x_trans=0,y_trans=0):
    '''random scattering of num_points scaled by scale, and translated by x_trans and y_trans'''
@@ -19,6 +19,9 @@ def createTestClustering(clusters,max_num_points=9, max_dist_btw_clusters=4):
    for _ in range(clusters):
       #this only looks complicated because of the beefy variable names, the +1 is to stop the cluster from being of size 0
       out+=createRandomScattering(int(random()*max_num_points)+1,x_trans=max_dist_btw_clusters*random(),y_trans=max_dist_btw_clusters*random()) 
+   f=open("lastRandDist.txt", "w")
+   f.write(str(out))
+   f.close()
    return out
    
 
@@ -51,7 +54,6 @@ def printGraphWithWeights(G,solution):
    labels=nx.get_edge_attributes(G,'weight')
    labels= {k:str(v)[:4] for k, v in labels.items()}
    nx.draw_networkx_edge_labels(G,nx.get_node_attributes(G,'pos'),edge_labels=labels,bbox=dict(alpha=0))
-   print(nx.get_edge_attributes(G,'weight'))
    printClustering(G,solution)
    plt.show()
 
@@ -67,7 +69,7 @@ def mincut_obj(solution, graph):
     obj = 0
     for i, j in graph.edges():
        if solution[i] != solution[j]:
-          obj -= graph.get_edge_data(i,j)["weight"]
+          obj += graph.get_edge_data(i,j)["weight"]
     return obj
 def compute_expectation(counts, graph):
     """Computes expectation value based on measurement results
@@ -98,8 +100,8 @@ def createQAOACirc(G, theta):
     p = len(theta)//2  # number of alternating unitaries
     qc = QuantumCircuit(nqubits)
     
-    beta = theta[:p] #list of parameters for the problem layer
-    gamma = theta[p:] #list of parameters for the mixing layer
+    beta = theta[:p] #list of parameters for the problem layers
+    gamma = theta[p:] #list of parameters for the mixing layers
     
     # initial state; uniform superposition
     for i in range(0, nqubits):
