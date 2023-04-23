@@ -192,7 +192,6 @@ if __name__=="__main__":
    counts =backend.run(qc_res, seed_simulator=10).result().get_counts()
    #we need to sort to get the bar chart in decent order
    sorted_counts = sorted(counts.items())
-   print((sorted_counts))
    # extract the keys and values from the sorted dictionary
    keys = [item[0] for item in sorted_counts]
    values = [item[1] for item in sorted_counts]
@@ -203,7 +202,7 @@ if __name__=="__main__":
 
    bestSolution= max(counts, key=counts.get)
    printClustering(G,bestSolution)
-   printGraphWithWeights(G,bestSolution)
+   # printGraphWithWeights(G,bestSolution)
    # create a scatter plot with colored points
    #plt.scatter([p[0] for p in points], [p[1] for p in points], c=colors, cmap='cool', vmin=0, vmax=1)
    plt.show()
