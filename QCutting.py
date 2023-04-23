@@ -1,12 +1,13 @@
 import matplotlib.pyplot as plt
-from qiskit import QuantumCircuit, ClassicalRegister, QuantumRegister, Aer, execute
+from qiskit import QuantumCircuit, Aer, execute
 #!from qiskit.circuit import Parameter
 from random import random
 import networkx as nx
 from itertools import combinations_with_replacement
 import argparse
 from scipy.optimize import minimize
-np.set_printoptions(linewidth=np.inf)#so matricies don't wrap as often
+from numpy import set_printoptions
+set_printoptions(linewidth=500)#so matricies don't wrap as often
 
 def createRandomScattering(num_points,scale=1,x_trans=0,y_trans=0):
    '''random scattering of num_points scaled by scale, and translated by x_trans and y_trans'''
@@ -24,7 +25,15 @@ def createTestClustering(clusters,max_num_points=9, max_dist_btw_clusters=4):
    f.close()
    return out
    
-
+def createGraph(points):
+   G = nx.Graph()
+   for i in range(len(points)):
+      G.add_node(i,pos=points[i])
+   for origin,destination in combinations_with_replacement(range(len(points)),2): #create the complete graph
+      if origin!=destination: #no self loops
+         G.add_edge(origin,destination,weight=distance(points[origin],points[destination])) #connect each vertex to each 
+         #other vertex with an edge where the weight is proportional to the distance between them.
+   return G
 def distance(point1,point2):
    '''distance between two points (tuples) of arbitrary dimension'''
    if len(point1) != len(point2):
@@ -69,7 +78,7 @@ def mincut_obj(solution, graph):
     obj = 0
     for i, j in graph.edges():
        if solution[i] != solution[j]:
-          obj += graph.get_edge_data(i,j)["weight"]
+          obj -= graph.get_edge_data(i,j)["weight"] #Q_ij=-W_ij
     return obj
 def compute_expectation(counts, graph):
     """Computes expectation value based on measurement results
@@ -109,10 +118,10 @@ def createQAOACirc(G, theta):
     
     for irep in range(0, p):
         # problem unitary
-        for pair in list(G.edges()): 
+        for i,j in list(G.edges()): 
         #since we are always dealing with the complete graph, 
         #this will apply RZZ(\gamma) to each pair of qubits
-            qc.rzz(2 * gamma[irep], pair[0], pair[1])
+            qc.rzz(G.get_edge_data(i,j)["weight"] * gamma[irep], i,j)
         qc.barrier()
         # mixer unitary
         for i in range(0, nqubits):
@@ -163,17 +172,8 @@ if __name__=="__main__":
          points=literal_eval(f.read())#convert from a string into a list of tuples. God bless this function my code was *ugly*.
 
 
-   #create graph
-   G = nx.Graph()
-   for i in range(len(points)):
-      G.add_node(i,pos=points[i])
-   for origin,destination in combinations_with_replacement(range(len(points)),2): #create the complete graph
-      if origin!=destination: #no self loops
-         G.add_edge(origin,destination,weight=distance(points[origin],points[destination])) #connect each vertex to each 
-         #other vertex with an edge where the weight is inversely proportional to the distance between them. It is inverse 
-         #because we want to minimize, not maximize   
-       
-    
+   #create graph  
+   G=createGraph(points)    
    get_expectation(G)
    res = minimize(get_expectation(G),[1.0, 1.0],method='COBYLA') #get_expectation returns the function execute_circ which takes in a 
    #1D vector of even dimension. 
@@ -192,6 +192,7 @@ if __name__=="__main__":
    counts =backend.run(qc_res, seed_simulator=10).result().get_counts()
    #we need to sort to get the bar chart in decent order
    sorted_counts = sorted(counts.items())
+   print((sorted_counts))
    # extract the keys and values from the sorted dictionary
    keys = [item[0] for item in sorted_counts]
    values = [item[1] for item in sorted_counts]
@@ -200,12 +201,12 @@ if __name__=="__main__":
    plt.bar(keys, values, align='center')
    plt.show()
 
-bestSolution= max(counts, key=counts.get)
-printClustering(G,bestSolution)
-printGraphWithWeights(G,bestSolution)
-# create a scatter plot with colored points
-#plt.scatter([p[0] for p in points], [p[1] for p in points], c=colors, cmap='cool', vmin=0, vmax=1)
-plt.show()
+   bestSolution= max(counts, key=counts.get)
+   printClustering(G,bestSolution)
+   printGraphWithWeights(G,bestSolution)
+   # create a scatter plot with colored points
+   #plt.scatter([p[0] for p in points], [p[1] for p in points], c=colors, cmap='cool', vmin=0, vmax=1)
+   plt.show()
 
 
 
