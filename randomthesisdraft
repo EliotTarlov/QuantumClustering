@@ -1,0 +1,1490 @@
+
+\documentclass[12pt,twoside]{reedthesis}
+\usepackage{graphicx,latexsym} 
+\usepackage{amssymb,amsthm,amsmath}
+\usepackage{longtable,booktabs,setspace} 
+\usepackage[hyphens]{url}
+\usepackage{rotating}
+\usepackage{natbib}
+\usepackage{tikz}
+\usepackage[braket, qm]{qcircuit}
+%\usepackage{qpic}
+%\newcommand{\ket}[1]{| #1\rangle}
+%\newcommand{\bra}[1]{\langle #1|}
+\newcommand{\qubit}[2]{\begin{pmatrix} #1\\#2\end{pmatrix}}
+%\newcommand{\gate}[4]{\begin{pmatrix} #1 & #2\\ #3&#4\end{pmatrix}}
+\newcommand{\braket}[2]{\langle #1 | #2 \rangle}
+\newcommand{\smolbit}[2]{\big(\begin{smallmatrix} #1\\#2\end{smallmatrix}\big)}
+% Comment out the natbib line above and uncomment the following two lines to use the new 
+% biblatex-chicago style, for Chicago A. Also make some changes at the end where the 
+% bibliography is included. 
+%\usepackage{biblatex-chicago}
+%\bibliography{thesis}
+
+% \usepackage{times} 
+
+\title{Quantum Clustering}
+\author{Eliot J. Tarlov}
+\date{May 2023}
+\division{Mathematics and Natural Sciences}
+\advisor{Chanathip Namprempre}
+\department{Mathematics}
+
+\setlength{\parskip}{0pt}
+\begin{document}
+
+  \maketitle
+  \frontmatter
+  \pagestyle{empty}
+    \chapter*{Acknowledgements}
+	I want to thank a few people.
+    \chapter*{Preface}
+	This is an example of a thesis setup to use the reed thesis document class.
+	
+	
+
+    \chapter*{List of Abbreviations}
+
+	\begin{table}[h]
+	\centering % You could remove this to move table to the left
+	\begin{tabular}{ll}
+		\textbf{qubit}  	&  Quantum Bit \\
+		\textbf{QAOA}  	&  Quantum Approximate Optimization Algorithm\\
+		\textbf{QUBO}  	&  Quadratic Unconstrained Binary Optimization (problem) \\
+	\end{tabular}
+	\end{table}
+	
+
+    \tableofcontents
+    \listoftables
+    \listoffigures
+	Clustering is both a computationally difficult and necessary task. In this paper we present a method of applying quantum adiabatic computing to this task by using the Quantum Approximate Optimization Algorithm applied to Min-Cut.
+	
+	\chapter*{Dedication}
+	This is dedicated to oceanic plankton for producing most of the oxygen we breath and getting none of the credit.
+
+  \mainmatter % here the regular arabic numbering starts
+  \pagestyle{fancyplain} % turns page numbering back on
+\iffalse
+      \chapter*{Introduction}
+         \addcontentsline{toc}{chapter}{Introduction}
+	\chaptermark{Introduction}
+	\markboth{Introduction}{Introduction}\fi
+\chapter{Quantum Mechanics}
+Quantum physics is the physics that governs \emph{extremely} small (sub-atomic mostly) or \emph{extremely} cold (near 0 kelvin) objects. The theory was developed in the early 20th century. Originally to reconcile the "ultraviolet crisis" though it has grown to resolve such diverse problems as quantum tunneling and electron confinement. The principal conclusion of quantum physics is that of "wave-particle duality". This is a view of quantum objects which requires them to be made of two parts: a wave function and a particle. The wave function is something of a theoretical construct as it cannot be observed in practice however its relevance is that when you square it \footnote{technically take the square of the magnitude since the wave function can have complex values} you receive the "probability density" of the associated particle. This is a function which when given a position in space outputs a number between 0 and 1 which is the probability of finding the particle at that location.\footnote{It should be noted that while you can in fact give the function a single point you will always receive 0. This makes intuitive sense as to find the particle at \emph{exactly} the point described is infinitesimally likely. We therefore need to find the probability within a certain range by integrating the probability function over that range.} \par However, this is not to say that the wave function has no effect on the world. This is because the wave functions of two distinct particles\footnote{It is also possible for a particle's wave function to interfere with itself.} can interact in ways those particles would never be able to do if they were classical objects. The classic example of this is the "double slit experiment" in which a (collumnated) source of light is passed through two very narrow, very close slits. In this circumstance the photons act as a wave and the two sources of light (from the two slits) interfere alternately constructively and destructively leading to an interference pattern which would not occur were the photons particles as colliding two particles cannot result in 0 particles as is observed in destructive interference. %\includegraphics[width=200pt]{doubleslit.png} \par
+While the classic example of this is with photons, this applies to \emph{all} quantum objects including electrons, protons and any other subatomic particle. 
+\par There are two necessary concepts from quantum physics required to understand quantum computation. The first of these is "superposition". The classic example of superposition comes from Shr\"{o}dinger's cat in which a cat is placed inside of a box with a mechanism which will kill the cat if a radioactive sample (with a half life of 1 hour) decays. We leave the cat in the box for one hour such that it has a 50/50 chance of dying. We then ask ourselves, "is the cat alive?". While there are several interpretations\footnote{Other contenders include string theory, pilot wave theory and many worlds as well as other much less popular versions. It should be noted that not all of these interpretations disagree with the cat being in a superposition.} of the state of the cat, the most popular of them is the Copenhagen interpretation\footnote{This is the interpretation this paper will use from now on.} which states that the cat is in a "superposition" of being both alive and dead. Shr\"{o}dinger strongly opposed this interpretation, indeed, this is why he put forward this seeming paradox to ridicule the theory. \par
+The second is the concept of "entanglement". This is a state in which two separate particles have interacted with each other such that it is impossible to determine the state of one without simultaneously determining the state of the other. That is, it is impossible to describe the state of one of those particles independently. To gain an intuitive understanding of entanglement imagine you have a red and a blue marble and you give one to your friend without looking at it. We can say that the color of your marble is "entangled" with that of your friends because as soon as you look at the color of your marble you immediately know the color of your friends regardless of the distance. While it would seem that using this technique it would be possible to communicate with your friend faster than the speed of light (which would violate special relativity and break causality). This is the basis of the famous "EPR paper" (Einstein-podolsky-Rosen paper) which set out to disprove the Copenhagen interpretation (Einstein, podolsky, Rosen 1935). However, it is in fact impossible to use this to communicate since the color of your marble is random so no meaningful information can be sent. The Copenhagen interpretation claims that the colors of the marbles are not simply unknown, but \emph{undetermined} until viewed. Under the Copenhagen interpretation the marbles are in a superposition of colors until they are observed at which point they instantaneously communicate their color such that they never show the same color. While this may seem unintuitive, the nonlocality (that is, instantaneous communication) of quantum theories is required by Bell's inequality.\footnote{The experiment in question technically instead proves that a correct theory cannot be both \emph{real} and \emph{local}. "Real" in this context means that the marbles do in fact have actual colors at all times, they are just hidden. These theories, called "hidden variable theories" have been empirically ruled out by a number of experiments improving on Bell's original work.}
+%\href{https://www.desmos.com/calculator/73savkzsdr} 
+%\includegraphics[width=200pt]{orbital.png}
+\chapter{Single qubits}
+This paper will use the "quantum circuit" model of computing. While other models exist (namely, quantum annealing) the "QC" model has been proved to be "complete", that is, all other models can be reduced to it. The basic outline of its function is similar to that of classical circuits where certain logic gates act on certain bits. There are however certain peculiarities caused by the nature of quantum computers. The largest of these is that instead of being a single bit which can be in exactly one of two states (0 or 1), the "qubits" of quantum computing are composed of a 1 by 2 vector of complex values which are allowed to take on any value provided that the sum of the squares of their magnitudes is equal to 1. This condition, that their sum must equal 1, is called the normalization condition. Because of this restriction, we can represent the state of a qubit by its position on the surface of a 3-D sphere. Those of you paying particularly close attention will notice that rather than the 3 free variables apparent for describing a position on the surface of a sphere, we should have 4, one for each of the real parts, one for each of the imaginary parts. To resolve this first observe that it only requires 2 variables to describe our position on the surface of the sphere: specifically 2 angles. However, this does not explain why we do not require a 4th dimension for our sphere since our angles should be allowed to be complex. This is explained by the previously mentioned normalization condition which requires that for a qubit $\smolbit{a}{b}, \|a\|^2+\|b\|^2=1$, this means that we can completely represent the qubit by $\smolbit{e^{i\phi}}{e^{ib\theta}}$ where a and b are restricted to angles. This sphere is called the Bloch sphere and is an important tool when representing the state of a qubit. 
+\begin{center}
+\includegraphics[width=200pt]{Bloch_Sphere.svg.png}
+\[\text{the Bloch Sphere}\]
+\end{center}
+Since 0 and 1 are no longer integers and are rather vectors in $\mathbb{C}^2$ we notate them as $\ket{0}$ and $\ket{1}$ if they are column vectors and $\bra{0}$ and $\bra{1}$ if they are row vectors. The $\ket{0}$ or $\ket{1}$ states are called the "pure" states while any other states are called "mixed" as they can be represented as $a\ket{0}+b\ket{1}$ where a and b are real numbers between -1 and 1. If a qubit is in a mixed state it can also be described as being in a "superposition". Just like with Schr\"{o}dinger's cat, we don't know whether the qubit is a 0 or 1 and it is inaccurate to say that it knows if it is a 0 or 1 and is just hiding the information from us. It is, in a sense, in both states at once. It should be here noted that we can never observe a qubit in a mixed state. When receiving results from a quantum calculation we always measure the qubits (metaphorically open the box) which always results in the qubit having a state of 0 or 1. The important part about this is that when we measure qubit in mixed state $a\ket{0}+b\ket{1}$, the probability that we will measure it being in a state of 0 is given by $||a||^2$ (and visa versa for 1). This is where the normalization condition comes from. The probability that a qubit will measure to 0 plus the probability that it will measure to 1 must equal 1. Note that $\ket{0}$ and $\ket{1}$ form the basis for a vector space in particular, a Hilbert space $\mathbb{C}^2$ with inner product $\braket{a}{b}$ where $\braket{a}{b}$ is defined as
+\[\braket{a}{b}=\sum_i a_i^* b_i\]
+where $a_i^*$ is the complex conjugate ($^*$) of the ith element of a. We also have the outer product $\ket{a}\bra{b}$ which yields the nxn matrix such that
+\[M_{ij}=a_ib^*_j\]
+
+\chapter{Multiple qubits}
+So far we have only talked about how to represent a single qubit however we only realize the advantages promised by Quantum Computing when we move to systems with multiple qubits. The most important tool when representing multiple qubits is the Kronecker product. The Kronecker product is defined as such:
+\[A\otimes B = \begin{bmatrix} a_{11}B & a_{12}B & \cdots & a_{1n}B \\ a_{21}B & a_{22}B & \cdots & a_{2n}B \\ \vdots & \vdots & \ddots & \vdots \\ a_{m1}B & a_{m2}B & \cdots & a_{mn}B \end{bmatrix}\]
+for A and B $\in \mathbb{C}^{2}$ (A and B being qubits) this expands out to
+ \[A\otimes B =\begin{pmatrix} a_1 \\ a_2 \end{pmatrix} \otimes \begin{pmatrix} b_1 \\ b_2 \end{pmatrix} = \begin{pmatrix} a_1 \begin{pmatrix} b_1 \\ b_2 \end{pmatrix} \\ a_2 \begin{pmatrix} b_1 \\ b_2 \end{pmatrix} \end{pmatrix} = \begin{pmatrix} a_1 b_1 \\ a_1 b_2 \\ a_2 b_1 \\ a_2 b_2 \end{pmatrix}
+\]
+ and for A and B $\in \mathbb{C}^{2\times2}$ (A and B being 1 bit quantum logic gates) this expands out to
+\[A \otimes B = \begin{bmatrix} a_{11}B & a_{12}B \\ a_{21}B & a_{22}B \end{bmatrix} = \begin{bmatrix} a_{11}b_{11} & a_{11}b_{12} & a_{12}b_{11} & a_{12}b_{12} \\ a_{11}b_{21} & a_{11}b_{22} & a_{12}b_{21} & a_{12}b_{22} \\ a_{21}b_{11} & a_{21}b_{12} & a_{22}b_{11} & a_{22}b_{12} \\ a_{21}b_{21} & a_{21}b_{22} & a_{22}b_{21} & a_{22}b_{22} \end{bmatrix}\]
+Note that the full $2^n$ possible permutations of combining the basis vectors ($\ket{0} \text{and} \ket{1}$) will yield the $2^n$ basis vectors for the newly enlarged vector space. We notate the state, also called the wave function, of a quantum computer as $\ket{\psi}$ which is composed by using the Kronecker product between each of the states of the qubits (also often notated $\ket{Download
+
+Source
+
+PDF
+Actions
+   Copy Project
+   Word Count
+Sync
+   Dropbox
+   Git
+   GitHub
+Settings
+Compiler
+
+pdfLaTeX
+TeX Live version
+
+2022
+Main document
+
+main.tex
+Spell check
+
+English
+Dictionary
+Auto-complete
+
+On
+Auto-close Brackets
+
+Off
+Code check
+
+On
+Editor theme
+
+textmate
+Overall theme
+
+Default
+Keybindings
+
+None
+Font Size
+
+12px
+Font Family
+
+Lucida / Source Code Pro
+Line Height
+
+Normal
+PDF Viewer
+
+Overleaf
+Help
+   Show Hotkeys
+   Documentation
+   Contact Us
+thesis in reed format
+Overleaf has upgraded the source editor. You can still use the old editor by selecting "Source (legacy)".
+
+Click to learn more and give feedback
+Editor mode.
+
+
+ 
+current match. (also often notated $\ket{\psi}$). It should be however on line 99.
+▾
+▾
+▾
+▾
+Since 0 and 1 are no longer integers and are rather vectors in $\mathbb{C}^2$ we notate them as $\ket{0}$ and $\ket{1}$ if they are column vectors and $\bra{0}$ and $\bra{1}$ if they are row vectors. The $\ket{0}$ or $\ket{1}$ states are called the "pure" states while any other states are called "mixed" as they can be represented as $a\ket{0}+b\ket{1}$ where a and b are real numbers between -1 and 1. If a qubit is in a mixed state it can also be described as being in a "superposition". Just like with Schr\"{o}dinger's cat, we don't know whether the qubit is a 0 or 1 and it is inaccurate to say that it knows if it is a 0 or 1 and is just hiding the information from us. It is, in a sense, in both states at once. It should be here noted that we can never observe a qubit in a mixed state. When receiving results from a quantum calculation we always measure the qubits (metaphorically open the box) which always results in the qubit having a state of 0 or 1. The important part about this is that when we measure qubit in mixed state $a\ket{0}+b\ket{1}$, the probability that we will measure it being in a state of 0 is given by $||a||^2$ (and visa versa for 1). This is where the normalization condition comes from. The probability that a qubit will measure to 0 plus the probability that it will measure to 1 must equal 1. Note that $\ket{0}$ and $\ket{1}$ form the basis for a vector space in particular, a Hilbert space $\mathbb{C}^2$ with inner product $\braket{a}{b}$ where $\braket{a}{b}$ is defined as
+\[\braket{a}{b}=\sum_i a_i^* b_i\]
+where $a_i^*$ is the complex conjugate ($^*$) of the ith element of a. We also have the outer product $\ket{a}\bra{b}$ which yields the nxn matrix such that
+\[M_{ij}=a_ib^*_j\]
+
+\chapter{Multiple qubits}
+So far we have only talked about how to represent a single qubit however we only realize the advantages promised by Quantum Computing when we move to systems with multiple qubits. The most important tool when representing multiple qubits is the Kronecker product. The Kronecker product is defined as such:
+\[A\otimes B = \begin{bmatrix} a_{11}B & a_{12}B & \cdots & a_{1n}B \\ a_{21}B & a_{22}B & \cdots & a_{2n}B \\ \vdots & \vdots & \ddots & \vdots \\ a_{m1}B & a_{m2}B & \cdots & a_{mn}B \end{bmatrix}\]
+for A and B $\in \mathbb{C}^{2}$ (A and B being qubits) this expands out to
+ \[A\otimes B =\begin{pmatrix} a_1 \\ a_2 \end{pmatrix} \otimes \begin{pmatrix} b_1 \\ b_2 \end{pmatrix} = \begin{pmatrix} a_1 \begin{pmatrix} b_1 \\ b_2 \end{pmatrix} \\ a_2 \begin{pmatrix} b_1 \\ b_2 \end{pmatrix} \end{pmatrix} = \begin{pmatrix} a_1 b_1 \\ a_1 b_2 \\ a_2 b_1 \\ a_2 b_2 \end{pmatrix}
+\]
+ and for A and B $\in \mathbb{C}^{2\times2}$ (A and B being 1 bit quantum logic gates) this expands out to
+\[A \otimes B = \begin{bmatrix} a_{11}B & a_{12}B \\ a_{21}B & a_{22}B \end{bmatrix} = \begin{bmatrix} a_{11}b_{11} & a_{11}b_{12} & a_{12}b_{11} & a_{12}b_{12} \\ a_{11}b_{21} & a_{11}b_{22} & a_{12}b_{21} & a_{12}b_{22} \\ a_{21}b_{11} & a_{21}b_{12} & a_{22}b_{11} & a_{22}b_{12} \\ a_{21}b_{21} & a_{21}b_{22} & a_{22}b_{21} & a_{22}b_{22} \end{bmatrix}\]
+Note that the full $2^n$ possible permutations of combining the basis vectors ($\ket{0} \text{and} \ket{1}$) will yield the $2^n$ basis vectors for the newly enlarged vector space. We notate the state, also called the wave function, of a quantum computer as $\ket{\psi}$ which is composed by using the Kronecker product between each of the states of the qubits (also often notated $\ket{\psi}$). It should be however noted that is not always possible to decompose the state of a quantum computer into the product of individual bits. For example the state
+\[\frac{1}{\sqrt{2}}\begin{pmatrix}
+1\\0\\1\\0    
+\end{pmatrix}\]
+cannot be produced by combining qubits. This state is called a ``Bell State" or the qubits as a ``Bell Pair". Any time qubits cannot be separated like this they are called "entangled" and indeed this is the same as the physics meaning of the term as it is impossible to measure one of the qubits without immediately measuring the other. Observe that so long as qubits are \emph{not} entangled it is possible to represent their states classically using a number of bits linearly proportional to the number of qubits. However, once the state of the quantum computer is highly entangled it requires exponentially many classical bits to represent the system as every time we add another qubit we multiply the number of entries in the vector representing the system by 2. This is the principal that underlies quantum advantage and also why so many quantum algorithms can be performed in classical time: they simply don't require sufficiently entangled qubits. 
+\chapter{Quantum Logic Gates and the Deutsch Oracle}
+\section{Single Qubit Gates}
+Quantum logic gates, hereafter referred to as quantum gates or simply gates, are often written as matrices. To see an example, let us look at the simplest possible gate: the identity gate. The identity gate is written as either I, 1 or $\big[\begin{smallmatrix}1&0\\0&1\end{smallmatrix}\big]$. Those familiar with linear algebra will recognize this as the identity matrix; that is, the matrix such that when it is multiplied by any matrix A yields A. Indeed, this is how we arithmetically apply gates: we multiply our starting vector by the gate. It is a simple exercise to see that I*A=A for all $A\in\mathbb{C}^2$. Next, let us examine the NOT gate. The NOT gate, or Pauli-X gate often written as X represents the matrix $\big[\begin{smallmatrix}0&1\\1&0\end{smallmatrix}\big]$ and encodes a rotation of $\pi$ radians around the X axis of the Bloch sphere. It is easy to see that $X*\ket{1}=\ket{0}$ and visa versa so the terminology of it as the not gate is suitable. There is also the Pauli Y and Pauli Z gates which each encode a $\pi$ radians rotation around the Y and Z axes respectively and are represented by the matricies
+\psi
+Replace with
+
+2 of 16
+×
+10 Chapter 4. Quantum Logic Gates and the Deusch-Jorza Oracle
+Query 2
+Result of Query 1
+0 1
+0 Set 0 Not
+1 Identity Set 1
+Query 2
+Result of Query 1
+|0⟩ |1⟩
+|0⟩ Set |0⟩ Not
+|1⟩ Identity Set |1⟩
+However it is possible to determine whether the gate is static or variable. That
+is, whether it is either one of Set 0 or Set 1 or whether it is one of NOT or Identity.
+A na ̈ıve approach actually quite simple. Rather than passing the oracle |0⟩ or |1⟩, we
+pass it ”both”. That is, we pass it |+⟩. Recall that we obtain |+⟩ and |−⟩ by beginning
+with |0⟩ and applying the Hadamard gate to get |+⟩ and |1⟩ for |−⟩. Obviously if it
+is a static gate this will output |0⟩ or |1⟩ and if it is variable it will output |−⟩ if it is
+NOT and |+⟩ if it is Identity. While it may appear that we actually determine the
+exact gate remember that in order to get any output from our quantum computer
+we must measure the output of this function. What we find is that, tragically, we
+don’t gain any extra information at all from this! If the output is |+⟩ or |−⟩ and
+we measure it we will have an equal probability to measure 0 or 1! So how do we
+fix this? The patch as it turns out is relatively simple. Rather than applying the
+Hadamard gate once, we use it four times: twice on each qubit, once before and once
+after applying the oracle. This allows us to get the qubit back into a pure state so
+the output is deterministic. We also need to invert both the output and input qubits
+to have the CNOT gate inside the variable gates function as intended. What we find
+is that when we measure the qubits they will yeild state |11⟩ if the oracle is static
+and |01⟩ if the oracle is variable.
+q0 X H
+Oracle
+H
+q1 X H H
+The final circuit
+While this may seem like a rather contrived scenario, the generalization of this to
+multi bit gates leads directly to Shor’s period finding algorithm which breaks RSA.
+Chapter 5
+The Quantum Approximate
+Optimization Algorithm
+The Quantum Approximate Optimization Algorithm (QAOA) is based off of an ap-
+proach to quantum computing called Adiabatic Quantum Computing. The theory
+behind this revolves around the concept of the Adiabatic Principal which was origi-
+nally stated says ”A physical system remains in its instantaneous eigenstate if a given
+perturbation is acting on it slowly enough and if there is a gap between the eigenvalue
+and the rest of the Hamiltonian’s spectrum.” (Born, Fock, 1928). Restated in more
+familiar terms, this states that if a system is in the ground state of a certain Hamil-
+tonian, if you change the Hamiltonian gradually enough, the system will remain in
+the ground state even if what that ground state is changes. The application of this
+is called the Variational Method and gives rise to Variational Quantum Computing
+(VQC). What this allows us to do is to take a computer and put it in a state with
+a trivial ground state, then change the Hamiltonian to one with a ground state we
+wish to find and measure the computer to find what the ground state of that new
+Hamiltonian is. This can be useful if we are able to construct a Hamiltonian who’s
+ground state corresponds to the solution to a problem. It should be noted that QAOA
+is a special case of the more generic algorithm the Variational Quantum Eigensolver.
+This leaves open the question ”How do we construct this Hamiltonian?” or, even
+more crucially, ”What problems can we construct Hamiltonians for?” The answer to
+the second is easier than the first so we will start with it.
+5.1 QUBOs
+In general the problems that are suited for QAOA are Quadratic Unconstrained Bi-
+nary Optimization (QUBO) problems. As the name suggests, these are optimization
+problems who’s variables are binary, who’s objective function is quadratic and is un-
+constrained. While binary is fairly straightforward (variables can have one of two
+values: True or False), for those unfamiliar with optimization problems the concept
+of a quadratic objective function may be unfamiliar so we will take a short detour
+to discuss optimization problems. Optimization problems are a vibrant and growing
+12 Chapter 5. The Quantum Approximate Optimization Algorithm
+field of study in computer science; they consist of problems for which we have a func-
+tion on multiple variables and want to find the assignment of those variables that
+maximizes the output of the function. This function is called the objective function.
+In quantum computing we correspond each variable with a qubit; this is why the
+problem must be binary: qubits can only be measured in one of two states. While
+the objective function need not be quadratic, it must be convex (or near to it) as
+otherwise the qubits would be able to tunnel between local minima. However, there
+are few problems we want to solve which have a nonquadratic, convex objective func-
+tion. While optimization problems are normally subject to constraint functions, in
+a quantum computer we have no way to constrain the values the qubits are able to
+take. This means that while it is possible to solve constrained optimization problems
+by incorporating the constraints into the objective function as extremely negatively
+weighted solutions (Dupuy, Hullo,2019) (Pusey-Nazzaro, Date, 2020), the impacts on
+performance make the task futile.
+5.2 Writing a Hamiltonian
+So we have picked a QUBO, how do we encode it for a quantum computer? We will
+take Max-Cut as an example. Max-Cut is in particular a good example as any QUBO
+can be reduced to it by a simple transformation. The Max-Cut problem is a graph
+algorithm which asks us to bi-partition the graph such that we maximize the number
+of edges we cut through. In the general case this is NP-Hard, however, we should
+be careful to note that for many graphs, the maximum cut can be obtained exactly
+in polynomial time by negating the weights and taking the minimum cut. Max-Cut
+is also of particular interest as solving the most likely assignment of magnetic spins
+in an Ising model is exactly equivalent to Max-Cut. First, let’s lay out the problem
+we want to solve. We want the Hamiltonian Hc such that Hc |x⟩ is equal to the cost
+function C(x) |x⟩. We begin by expanding the cost function where Q is the coefficient
+matrix and c is the linear terms:
+C(x) = xT Qx + cT x =
+n∑
+i,s=1
+Qij xixj +
+n∑
+i=1
+cixi
+The crucial relation that allows this conversion to work is that
+Zi |x⟩ = (−1)xi = 1 − 2xi =⇒ I − Zi
+2 |x⟩ = xi
+Where Zi is the Pauli Z gate on the ith qubit and I is the identity gate. This allows
+us to substitute xi for I−Zi
+2 in our cost function to directly obtain the Hamiltonian:
+n∑
+i,s=1
+Qij
+I − Zi
+2
+I − Zj
+2 +
+n∑
+i=1
+ci
+I − Zi
+2
+With some expansion this yields
+n∑
+i,j=1
+Qij
+4 +
+n∑
+i=1
+ci
+2 −
+n∑
+i=1
+(
+n∑
+j=1
+Qij
+4 )Zi −
+n∑
+j=1
+(
+n∑
+i=1
+Qij
+4 )Zj −
+n∑
+i=1
+ci
+2 Zi +
+n∑
+i,j=1
+Qij
+4 ZiZj
+5.3. Writing the Hamiltonian of Max-Cut instance 13
+And then with some more rearranging we get the general Hamiltonian
+n∑
+i,j=1
+Qij ZiZj
+4 −
+n∑
+i=1
+1
+2 (ci +
+n∑
+j=1
+Qij )Zi + (
+n∑
+i,j=1
+Qij
+4 +
+n∑
+i=1
+ci
+2 )
+5.3 Writing the Hamiltonian of Max-Cut instance
+So, lets try out our fancy new technique on a toy problem, find the max-cut of the
+graph G:
+0
+1
+2
+This graph will have the adjacency matrix A and we can convert from the adjacency
+matrix to the quadratic program by defining a binary variable (xi) for each node i
+where xi = 1 if node i is in the first partition and 0 if it is in the second. This gives
+us the elegant notation for a prospective solution x where x is a vector of length |V |
+where each element corresponds to one of our variables. This gives us
+(1 − xi)xj + (1 − xj )xi = −2xixj + xi + xj
+such that −2xixj + xi + xj = 1 if and only if i and j are in opposite parts of the
+bipartition and 0 otherwise. This yields the overall objective function
+arg max
+x∈{0,1}|V |
+∑
+(i,j)∈E
+(−2xixj + xi + xj )
+Note that we never multiply more than 2 variables together making this a quadratic
+function. Alternatively, given the adjacency matrix A:
+A =
+
+
+0 1 0
+1 0 1
+0 1 0
+
+ =⇒ C(x) = 1
+4
+2∑
+i,j=0
+(Aij − xixj )2
+such that
+Qij = −Aij
+and
+ci =
+2∑
+j=0
+Aij
+Then we may simply substitute these as Q and c:
+n∑
+i,j=1
+−Aij ZiZj
+4 −
+n∑
+i=1
+1
+2(
+2∑
+j=0
+Aij +
+n∑
+j=1
+−Aij )Zi + (
+n∑
+i,j=1
+−Aij
+4 +
+n∑
+i=1
+∑2
+j=0 Aij
+2 )
+Chapter 6
+Ideas for Chapter 6 revision
+6.1 Basic terminology
+Define the following terms.
+• Hilbert space
+• Hermitian matrix
+• state |ψ⟩ of a quantum system
+• energy of a system in state |ψ⟩
+• ground state: lowest energy state ψ∗ = argmin ... for all ψ ∈ H (hilbert space)
+• Hamiltonian
+– is considered to be an “operator”
+– matrix representation as a Hermitian matrix
+– role = describing possible energy of the system
+• The notation H |x⟩
+• Energy of a system in the state |ψ⟩: the expected value of ψ with respect to H
+denoted as ⟨ψ|H|ψ⟩
+6.2 Variational method
+Goal: approximate ground state ψ∗ and lowest energy E∗
+Steps: Two main steps
+1. Choose trial state (aka ansatz) |ψ(θ)⟩
+2. Vary θ to minimize E(θ) = ⟨ψ(θ)|H|ψ(θ)⟩ and θ∗ = argmin ... E(θ) for all
+θ
+16 Chapter 6. Ideas for Chapter 6 revision
+Implications:
+• E(θ∗) is an upper bound for E∗
+• |ψ(θ∗)⟩ approximates |ψ∗⟩
+6.3 Variational Quantum Circuit
+VQC = QC that depends on θ
+Then, show the big picture, i.e., picture like slide page 8
+6.4 Quadratic programs
+General description. Then discuss QUBO followed by material in section 6.1
+6.5 Max-Cut and QUBO problem corresponding
+to Max-Cut
+6.5.1 Max-Cut
+Input:
+Output:
+Example instance of a max-cut problem (Part of the first paragraph in 6.3)
+Example solution to the problem, i.e., a cut
+Cost function
+Hardness of Max-cut
+6.5.2 QUBO problem corresponding to Max-cut
+Contents in this subsection should be as analogous to the previous subsection as
+possible (with the exception of the subsubsection concerning hardness).
+Writing a Hamiltonian
+Material in 6.2 and parts of 6.3
+Chapter 7
+credits
+Bloch sphere diagram from glosser.ca
+https://commons.wikimedia.org/wiki/File:Bloch Sphere.svg
+Download
+
+Source
+
+PDF
+Actions
+   Copy Project
+   Word Count
+Sync
+   Dropbox
+   Git
+   GitHub
+Settings
+Compiler
+
+pdfLaTeX
+TeX Live version
+
+2022
+Main document
+
+main.tex
+Spell check
+
+English
+Dictionary
+Auto-complete
+
+On
+Auto-close Brackets
+
+Off
+Code check
+
+On
+Editor theme
+
+textmate
+Overall theme
+
+Default
+Keybindings
+
+None
+Font Size
+
+12px
+Font Family
+
+Lucida / Source Code Pro
+Line Height
+
+Normal
+PDF Viewer
+
+Overleaf
+Help
+   Show Hotkeys
+   Documentation
+   Contact Us
+thesis in reed format
+Overleaf has upgraded the source editor. You can still use the old editor by selecting "Source (legacy)".
+
+Click to learn more and give feedback
+Editor mode.
+
+
+ 
+current match. (also often notated $\ket{\psi}$). It should be however on line 99.
+▾
+▾
+▾
+▾
+Since 0 and 1 are no longer integers and are rather vectors in $\mathbb{C}^2$ we notate them as $\ket{0}$ and $\ket{1}$ if they are column vectors and $\bra{0}$ and $\bra{1}$ if they are row vectors. The $\ket{0}$ or $\ket{1}$ states are called the "pure" states while any other states are called "mixed" as they can be represented as $a\ket{0}+b\ket{1}$ where a and b are real numbers between -1 and 1. If a qubit is in a mixed state it can also be described as being in a "superposition". Just like with Schr\"{o}dinger's cat, we don't know whether the qubit is a 0 or 1 and it is inaccurate to say that it knows if it is a 0 or 1 and is just hiding the information from us. It is, in a sense, in both states at once. It should be here noted that we can never observe a qubit in a mixed state. When receiving results from a quantum calculation we always measure the qubits (metaphorically open the box) which always results in the qubit having a state of 0 or 1. The important part about this is that when we measure qubit in mixed state $a\ket{0}+b\ket{1}$, the probability that we will measure it being in a state of 0 is given by $||a||^2$ (and visa versa for 1). This is where the normalization condition comes from. The probability that a qubit will measure to 0 plus the probability that it will measure to 1 must equal 1. Note that $\ket{0}$ and $\ket{1}$ form the basis for a vector space in particular, a Hilbert space $\mathbb{C}^2$ with inner product $\braket{a}{b}$ where $\braket{a}{b}$ is defined as
+\[\braket{a}{b}=\sum_i a_i^* b_i\]
+where $a_i^*$ is the complex conjugate ($^*$) of the ith element of a. We also have the outer product $\ket{a}\bra{b}$ which yields the nxn matrix such that
+\[M_{ij}=a_ib^*_j\]
+
+\chapter{Multiple qubits}
+So far we have only talked about how to represent a single qubit however we only realize the advantages promised by Quantum Computing when we move to systems with multiple qubits. The most important tool when representing multiple qubits is the Kronecker product. The Kronecker product is defined as such:
+\[A\otimes B = \begin{bmatrix} a_{11}B & a_{12}B & \cdots & a_{1n}B \\ a_{21}B & a_{22}B & \cdots & a_{2n}B \\ \vdots & \vdots & \ddots & \vdots \\ a_{m1}B & a_{m2}B & \cdots & a_{mn}B \end{bmatrix}\]
+for A and B $\in \mathbb{C}^{2}$ (A and B being qubits) this expands out to
+ \[A\otimes B =\begin{pmatrix} a_1 \\ a_2 \end{pmatrix} \otimes \begin{pmatrix} b_1 \\ b_2 \end{pmatrix} = \begin{pmatrix} a_1 \begin{pmatrix} b_1 \\ b_2 \end{pmatrix} \\ a_2 \begin{pmatrix} b_1 \\ b_2 \end{pmatrix} \end{pmatrix} = \begin{pmatrix} a_1 b_1 \\ a_1 b_2 \\ a_2 b_1 \\ a_2 b_2 \end{pmatrix}
+\]
+ and for A and B $\in \mathbb{C}^{2\times2}$ (A and B being 1 bit quantum logic gates) this expands out to
+\[A \otimes B = \begin{bmatrix} a_{11}B & a_{12}B \\ a_{21}B & a_{22}B \end{bmatrix} = \begin{bmatrix} a_{11}b_{11} & a_{11}b_{12} & a_{12}b_{11} & a_{12}b_{12} \\ a_{11}b_{21} & a_{11}b_{22} & a_{12}b_{21} & a_{12}b_{22} \\ a_{21}b_{11} & a_{21}b_{12} & a_{22}b_{11} & a_{22}b_{12} \\ a_{21}b_{21} & a_{21}b_{22} & a_{22}b_{21} & a_{22}b_{22} \end{bmatrix}\]
+Note that the full $2^n$ possible permutations of combining the basis vectors ($\ket{0} \text{and} \ket{1}$) will yield the $2^n$ basis vectors for the newly enlarged vector space. We notate the state, also called the wave function, of a quantum computer as $\ket{\psi}$ which is composed by using the Kronecker product between each of the states of the qubits (also often notated $\ket{\psi}$). It should be however noted that is not always possible to decompose the state of a quantum computer into the product of individual bits. For example the state
+\[\frac{1}{\sqrt{2}}\begin{pmatrix}
+1\\0\\1\\0    
+\end{pmatrix}\]
+cannot be produced by combining qubits. This state is called a ``Bell State" or the qubits as a ``Bell Pair". Any time qubits cannot be separated like this they are called "entangled" and indeed this is the same as the physics meaning of the term as it is impossible to measure one of the qubits without immediately measuring the other. Observe that so long as qubits are \emph{not} entangled it is possible to represent their states classically using a number of bits linearly proportional to the number of qubits. However, once the state of the quantum computer is highly entangled it requires exponentially many classical bits to represent the system as every time we add another qubit we multiply the number of entries in the vector representing the system by 2. This is the principal that underlies quantum advantage and also why so many quantum algorithms can be performed in classical time: they simply don't require sufficiently entangled qubits. 
+\chapter{Quantum Logic Gates and the Deutsch Oracle}
+\section{Single Qubit Gates}
+Quantum logic gates, hereafter referred to as quantum gates or simply gates, are often written as matrices. To see an example, let us look at the simplest possible gate: the identity gate. The identity gate is written as either I, 1 or $\big[\begin{smallmatrix}1&0\\0&1\end{smallmatrix}\big]$. Those familiar with linear algebra will recognize this as the identity matrix; that is, the matrix such that when it is multiplied by any matrix A yields A. Indeed, this is how we arithmetically apply gates: we multiply our starting vector by the gate. It is a simple exercise to see that I*A=A for all $A\in\mathbb{C}^2$. Next, let us examine the NOT gate. The NOT gate, or Pauli-X gate often written as X represents the matrix $\big[\begin{smallmatrix}0&1\\1&0\end{smallmatrix}\big]$ and encodes a rotation of $\pi$ radians around the X axis of the Bloch sphere. It is easy to see that $X*\ket{1}=\ket{0}$ and visa versa so the terminology of it as the not gate is suitable. There is also the Pauli Y and Pauli Z gates which each encode a $\pi$ radians rotation around the Y and Z axes respectively and are represented by the matricies
+\psi
+Replace with
+
+2 of 16
+×
+10 Chapter 4. Quantum Logic Gates and the Deusch-Jorza Oracle
+Query 2
+Result of Query 1
+0 1
+0 Set 0 Not
+1 Identity Set 1
+Query 2
+Result of Query 1
+|0⟩ |1⟩
+|0⟩ Set |0⟩ Not
+|1⟩ Identity Set |1⟩
+However it is possible to determine whether the gate is static or variable. That
+is, whether it is either one of Set 0 or Set 1 or whether it is one of NOT or Identity.
+A na ̈ıve approach actually quite simple. Rather than passing the oracle |0⟩ or |1⟩, we
+pass it ”both”. That is, we pass it |+⟩. Recall that we obtain |+⟩ and |−⟩ by beginning
+with |0⟩ and applying the Hadamard gate to get |+⟩ and |1⟩ for |−⟩. Obviously if it
+is a static gate this will output |0⟩ or |1⟩ and if it is variable it will output |−⟩ if it is
+NOT and |+⟩ if it is Identity. While it may appear that we actually determine the
+exact gate remember that in order to get any output from our quantum computer
+we must measure the output of this function. What we find is that, tragically, we
+don’t gain any extra information at all from this! If the output is |+⟩ or |−⟩ and
+we measure it we will have an equal probability to measure 0 or 1! So how do we
+fix this? The patch as it turns out is relatively simple. Rather than applying the
+Hadamard gate once, we use it four times: twice on each qubit, once before and once
+after applying the oracle. This allows us to get the qubit back into a pure state so
+the output is deterministic. We also need to invert both the output and input qubits
+to have the CNOT gate inside the variable gates function as intended. What we find
+is that when we measure the qubits they will yeild state |11⟩ if the oracle is static
+and |01⟩ if the oracle is variable.
+q0 X H
+Oracle
+H
+q1 X H H
+The final circuit
+While this may seem like a rather contrived scenario, the generalization of this to
+multi bit gates leads directly to Shor’s period finding algorithm which breaks RSA.
+Chapter 5
+The Quantum Approximate
+Optimization Algorithm
+The Quantum Approximate Optimization Algorithm (QAOA) is based off of an ap-
+proach to quantum computing called Adiabatic Quantum Computing. The theory
+behind this revolves around the concept of the Adiabatic Principal which was origi-
+nally stated says ”A physical system remains in its instantaneous eigenstate if a given
+perturbation is acting on it slowly enough and if there is a gap between the eigenvalue
+and the rest of the Hamiltonian’s spectrum.” (Born, Fock, 1928). Restated in more
+familiar terms, this states that if a system is in the ground state of a certain Hamil-
+tonian, if you change the Hamiltonian gradually enough, the system will remain in
+the ground state even if what that ground state is changes. The application of this
+is called the Variational Method and gives rise to Variational Quantum Computing
+(VQC). What this allows us to do is to take a computer and put it in a state with
+a trivial ground state, then change the Hamiltonian to one with a ground state we
+wish to find and measure the computer to find what the ground state of that new
+Hamiltonian is. This can be useful if we are able to construct a Hamiltonian who’s
+ground state corresponds to the solution to a problem. It should be noted that QAOA
+is a special case of the more generic algorithm the Variational Quantum Eigensolver.
+This leaves open the question ”How do we construct this Hamiltonian?” or, even
+more crucially, ”What problems can we construct Hamiltonians for?” The answer to
+the second is easier than the first so we will start with it.
+5.1 QUBOs
+In general the problems that are suited for QAOA are Quadratic Unconstrained Bi-
+nary Optimization (QUBO) problems. As the name suggests, these are optimization
+problems who’s variables are binary, who’s objective function is quadratic and is un-
+constrained. While binary is fairly straightforward (variables can have one of two
+values: True or False), for those unfamiliar with optimization problems the concept
+of a quadratic objective function may be unfamiliar so we will take a short detour
+to discuss optimization problems. Optimization problems are a vibrant and growing
+12 Chapter 5. The Quantum Approximate Optimization Algorithm
+field of study in computer science; they consist of problems for which we have a func-
+tion on multiple variables and want to find the assignment of those variables that
+maximizes the output of the function. This function is called the objective function.
+In quantum computing we correspond each variable with a qubit; this is why the
+problem must be binary: qubits can only be measured in one of two states. While
+the objective function need not be quadratic, it must be convex (or near to it) as
+otherwise the qubits would be able to tunnel between local minima. However, there
+are few problems we want to solve which have a nonquadratic, convex objective func-
+tion. While optimization problems are normally subject to constraint functions, in
+a quantum computer we have no way to constrain the values the qubits are able to
+take. This means that while it is possible to solve constrained optimization problems
+by incorporating the constraints into the objective function as extremely negatively
+weighted solutions (Dupuy, Hullo,2019) (Pusey-Nazzaro, Date, 2020), the impacts on
+performance make the task futile.
+5.2 Writing a Hamiltonian
+So we have picked a QUBO, how do we encode it for a quantum computer? We will
+take Max-Cut as an example. Max-Cut is in particular a good example as any QUBO
+can be reduced to it by a simple transformation. The Max-Cut problem is a graph
+algorithm which asks us to bi-partition the graph such that we maximize the number
+of edges we cut through. In the general case this is NP-Hard, however, we should
+be careful to note that for many graphs, the maximum cut can be obtained exactly
+in polynomial time by negating the weights and taking the minimum cut. Max-Cut
+is also of particular interest as solving the most likely assignment of magnetic spins
+in an Ising model is exactly equivalent to Max-Cut. First, let’s lay out the problem
+we want to solve. We want the Hamiltonian Hc such that Hc |x⟩ is equal to the cost
+function C(x) |x⟩. We begin by expanding the cost function where Q is the coefficient
+matrix and c is the linear terms:
+C(x) = xT Qx + cT x =
+n∑
+i,s=1
+Qij xixj +
+n∑
+i=1
+cixi
+The crucial relation that allows this conversion to work is that
+Zi |x⟩ = (−1)xi = 1 − 2xi =⇒ I − Zi
+2 |x⟩ = xi
+Where Zi is the Pauli Z gate on the ith qubit and I is the identity gate. This allows
+us to substitute xi for I−Zi
+2 in our cost function to directly obtain the Hamiltonian:
+n∑
+i,s=1
+Qij
+I − Zi
+2
+I − Zj
+2 +
+n∑
+i=1
+ci
+I − Zi
+2
+With some expansion this yields
+n∑
+i,j=1
+Qij
+4 +
+n∑
+i=1
+ci
+2 −
+n∑
+i=1
+(
+n∑
+j=1
+Qij
+4 )Zi −
+n∑
+j=1
+(
+n∑
+i=1
+Qij
+4 )Zj −
+n∑
+i=1
+ci
+2 Zi +
+n∑
+i,j=1
+Qij
+4 ZiZj
+5.3. Writing the Hamiltonian of Max-Cut instance 13
+And then with some more rearranging we get the general Hamiltonian
+n∑
+i,j=1
+Qij ZiZj
+4 −
+n∑
+i=1
+1
+2 (ci +
+n∑
+j=1
+Qij )Zi + (
+n∑
+i,j=1
+Qij
+4 +
+n∑
+i=1
+ci
+2 )
+5.3 Writing the Hamiltonian of Max-Cut instance
+So, lets try out our fancy new technique on a toy problem, find the max-cut of the
+graph G:
+0
+1
+2
+This graph will have the adjacency matrix A and we can convert from the adjacency
+matrix to the quadratic program by defining a binary variable (xi) for each node i
+where xi = 1 if node i is in the first partition and 0 if it is in the second. This gives
+us the elegant notation for a prospective solution x where x is a vector of length |V |
+where each element corresponds to one of our variables. This gives us
+(1 − xi)xj + (1 − xj )xi = −2xixj + xi + xj
+such that −2xixj + xi + xj = 1 if and only if i and j are in opposite parts of the
+bipartition and 0 otherwise. This yields the overall objective function
+arg max
+x∈{0,1}|V |
+∑
+(i,j)∈E
+(−2xixj + xi + xj )
+Note that we never multiply more than 2 variables together making this a quadratic
+function. Alternatively, given the adjacency matrix A:
+A =
+
+
+0 1 0
+1 0 1
+0 1 0
+
+ =⇒ C(x) = 1
+4
+2∑
+i,j=0
+(Aij − xixj )2
+such that
+Qij = −Aij
+and
+ci =
+2∑
+j=0
+Aij
+Then we may simply substitute these as Q and c:
+n∑
+i,j=1
+−Aij ZiZj
+4 −
+n∑
+i=1
+1
+2(
+2∑
+j=0
+Aij +
+n∑
+j=1
+−Aij )Zi + (
+n∑
+i,j=1
+−Aij
+4 +
+n∑
+i=1
+∑2
+j=0 Aij
+2 )
+Chapter 6
+Ideas for Chapter 6 revision
+6.1 Basic terminology
+Define the following terms.
+• Hilbert space
+• Hermitian matrix
+• state |ψ⟩ of a quantum system
+• energy of a system in state |ψ⟩
+• ground state: lowest energy state ψ∗ = argmin ... for all ψ ∈ H (hilbert space)
+• Hamiltonian
+– is considered to be an “operator”
+– matrix representation as a Hermitian matrix
+– role = describing possible energy of the system
+• The notation H |x⟩
+• Energy of a system in the state |ψ⟩: the expected value of ψ with respect to H
+denoted as ⟨ψ|H|ψ⟩
+6.2 Variational method
+Goal: approximate ground state ψ∗ and lowest energy E∗
+Steps: Two main steps
+1. Choose trial state (aka ansatz) |ψ(θ)⟩
+2. Vary θ to minimize E(θ) = ⟨ψ(θ)|H|ψ(θ)⟩ and θ∗ = argmin ... E(θ) for all
+θ
+16 Chapter 6. Ideas for Chapter 6 revision
+Implications:
+• E(θ∗) is an upper bound for E∗
+• |ψ(θ∗)⟩ approximates |ψ∗⟩
+6.3 Variational Quantum Circuit
+VQC = QC that depends on θ
+Then, show the big picture, i.e., picture like slide page 8
+6.4 Quadratic programs
+General description. Then discuss QUBO followed by material in section 6.1
+6.5 Max-Cut and QUBO problem corresponding
+to Max-Cut
+6.5.1 Max-Cut
+Input:
+Output:
+Example instance of a max-cut problem (Part of the first paragraph in 6.3)
+Example solution to the problem, i.e., a cut
+Cost function
+Hardness of Max-cut
+6.5.2 QUBO problem corresponding to Max-cut
+Contents in this subsection should be as analogous to the previous subsection as
+possible (with the exception of the subsubsection concerning hardness).
+Writing a Hamiltonian
+Material in 6.2 and parts of 6.3
+Chapter 7
+credits
+Bloch sphere diagram from glosser.ca
+https://commons.wikimedia.org/wiki/File:Bloch Sphere.svg
+Download
+
+Source
+
+PDF
+Actions
+   Copy Project
+   Word Count
+Sync
+   Dropbox
+   Git
+   GitHub
+Settings
+Compiler
+
+pdfLaTeX
+TeX Live version
+
+2022
+Main document
+
+main.tex
+Spell check
+
+English
+Dictionary
+Auto-complete
+
+On
+Auto-close Brackets
+
+Off
+Code check
+
+On
+Editor theme
+
+textmate
+Overall theme
+
+Default
+Keybindings
+
+None
+Font Size
+
+12px
+Font Family
+
+Lucida / Source Code Pro
+Line Height
+
+Normal
+PDF Viewer
+
+Overleaf
+Help
+   Show Hotkeys
+   Documentation
+   Contact Us
+thesis in reed format
+Overleaf has upgraded the source editor. You can still use the old editor by selecting "Source (legacy)".
+
+Click to learn more and give feedback
+Editor mode.
+
+
+ 
+current match. (also often notated $\ket{\psi}$). It should be however on line 99.
+▾
+▾
+▾
+▾
+Since 0 and 1 are no longer integers and are rather vectors in $\mathbb{C}^2$ we notate them as $\ket{0}$ and $\ket{1}$ if they are column vectors and $\bra{0}$ and $\bra{1}$ if they are row vectors. The $\ket{0}$ or $\ket{1}$ states are called the "pure" states while any other states are called "mixed" as they can be represented as $a\ket{0}+b\ket{1}$ where a and b are real numbers between -1 and 1. If a qubit is in a mixed state it can also be described as being in a "superposition". Just like with Schr\"{o}dinger's cat, we don't know whether the qubit is a 0 or 1 and it is inaccurate to say that it knows if it is a 0 or 1 and is just hiding the information from us. It is, in a sense, in both states at once. It should be here noted that we can never observe a qubit in a mixed state. When receiving results from a quantum calculation we always measure the qubits (metaphorically open the box) which always results in the qubit having a state of 0 or 1. The important part about this is that when we measure qubit in mixed state $a\ket{0}+b\ket{1}$, the probability that we will measure it being in a state of 0 is given by $||a||^2$ (and visa versa for 1). This is where the normalization condition comes from. The probability that a qubit will measure to 0 plus the probability that it will measure to 1 must equal 1. Note that $\ket{0}$ and $\ket{1}$ form the basis for a vector space in particular, a Hilbert space $\mathbb{C}^2$ with inner product $\braket{a}{b}$ where $\braket{a}{b}$ is defined as
+\[\braket{a}{b}=\sum_i a_i^* b_i\]
+where $a_i^*$ is the complex conjugate ($^*$) of the ith element of a. We also have the outer product $\ket{a}\bra{b}$ which yields the nxn matrix such that
+\[M_{ij}=a_ib^*_j\]
+
+\chapter{Multiple qubits}
+So far we have only talked about how to represent a single qubit however we only realize the advantages promised by Quantum Computing when we move to systems with multiple qubits. The most important tool when representing multiple qubits is the Kronecker product. The Kronecker product is defined as such:
+\[A\otimes B = \begin{bmatrix} a_{11}B & a_{12}B & \cdots & a_{1n}B \\ a_{21}B & a_{22}B & \cdots & a_{2n}B \\ \vdots & \vdots & \ddots & \vdots \\ a_{m1}B & a_{m2}B & \cdots & a_{mn}B \end{bmatrix}\]
+for A and B $\in \mathbb{C}^{2}$ (A and B being qubits) this expands out to
+ \[A\otimes B =\begin{pmatrix} a_1 \\ a_2 \end{pmatrix} \otimes \begin{pmatrix} b_1 \\ b_2 \end{pmatrix} = \begin{pmatrix} a_1 \begin{pmatrix} b_1 \\ b_2 \end{pmatrix} \\ a_2 \begin{pmatrix} b_1 \\ b_2 \end{pmatrix} \end{pmatrix} = \begin{pmatrix} a_1 b_1 \\ a_1 b_2 \\ a_2 b_1 \\ a_2 b_2 \end{pmatrix}
+\]
+ and for A and B $\in \mathbb{C}^{2\times2}$ (A and B being 1 bit quantum logic gates) this expands out to
+\[A \otimes B = \begin{bmatrix} a_{11}B & a_{12}B \\ a_{21}B & a_{22}B \end{bmatrix} = \begin{bmatrix} a_{11}b_{11} & a_{11}b_{12} & a_{12}b_{11} & a_{12}b_{12} \\ a_{11}b_{21} & a_{11}b_{22} & a_{12}b_{21} & a_{12}b_{22} \\ a_{21}b_{11} & a_{21}b_{12} & a_{22}b_{11} & a_{22}b_{12} \\ a_{21}b_{21} & a_{21}b_{22} & a_{22}b_{21} & a_{22}b_{22} \end{bmatrix}\]
+Note that the full $2^n$ possible permutations of combining the basis vectors ($\ket{0} \text{and} \ket{1}$) will yield the $2^n$ basis vectors for the newly enlarged vector space. We notate the state, also called the wave function, of a quantum computer as $\ket{\psi}$ which is composed by using the Kronecker product between each of the states of the qubits (also often notated $\ket{\psi}$). It should be however noted that is not always possible to decompose the state of a quantum computer into the product of individual bits. For example the state
+\[\frac{1}{\sqrt{2}}\begin{pmatrix}
+1\\0\\1\\0    
+\end{pmatrix}\]
+cannot be produced by combining qubits. This state is called a ``Bell State" or the qubits as a ``Bell Pair". Any time qubits cannot be separated like this they are called "entangled" and indeed this is the same as the physics meaning of the term as it is impossible to measure one of the qubits without immediately measuring the other. Observe that so long as qubits are \emph{not} entangled it is possible to represent their states classically using a number of bits linearly proportional to the number of qubits. However, once the state of the quantum computer is highly entangled it requires exponentially many classical bits to represent the system as every time we add another qubit we multiply the number of entries in the vector representing the system by 2. This is the principal that underlies quantum advantage and also why so many quantum algorithms can be performed in classical time: they simply don't require sufficiently entangled qubits. 
+\chapter{Quantum Logic Gates and the Deutsch Oracle}
+\section{Single Qubit Gates}
+Quantum logic gates, hereafter referred to as quantum gates or simply gates, are often written as matrices. To see an example, let us look at the simplest possible gate: the identity gate. The identity gate is written as either I, 1 or $\big[\begin{smallmatrix}1&0\\0&1\end{smallmatrix}\big]$. Those familiar with linear algebra will recognize this as the identity matrix; that is, the matrix such that when it is multiplied by any matrix A yields A. Indeed, this is how we arithmetically apply gates: we multiply our starting vector by the gate. It is a simple exercise to see that I*A=A for all $A\in\mathbb{C}^2$. Next, let us examine the NOT gate. The NOT gate, or Pauli-X gate often written as X represents the matrix $\big[\begin{smallmatrix}0&1\\1&0\end{smallmatrix}\big]$ and encodes a rotation of $\pi$ radians around the X axis of the Bloch sphere. It is easy to see that $X*\ket{1}=\ket{0}$ and visa versa so the terminology of it as the not gate is suitable. There is also the Pauli Y and Pauli Z gates which each encode a $\pi$ radians rotation around the Y and Z axes respectively and are represented by the matricies
+\psi
+Replace with
+
+2 of 16
+×
+10 Chapter 4. Quantum Logic Gates and the Deusch-Jorza Oracle
+Query 2
+Result of Query 1
+0 1
+0 Set 0 Not
+1 Identity Set 1
+Query 2
+Result of Query 1
+|0⟩ |1⟩
+|0⟩ Set |0⟩ Not
+|1⟩ Identity Set |1⟩
+However it is possible to determine whether the gate is static or variable. That
+is, whether it is either one of Set 0 or Set 1 or whether it is one of NOT or Identity.
+A na ̈ıve approach actually quite simple. Rather than passing the oracle |0⟩ or |1⟩, we
+pass it ”both”. That is, we pass it |+⟩. Recall that we obtain |+⟩ and |−⟩ by beginning
+with |0⟩ and applying the Hadamard gate to get |+⟩ and |1⟩ for |−⟩. Obviously if it
+is a static gate this will output |0⟩ or |1⟩ and if it is variable it will output |−⟩ if it is
+NOT and |+⟩ if it is Identity. While it may appear that we actually determine the
+exact gate remember that in order to get any output from our quantum computer
+we must measure the output of this function. What we find is that, tragically, we
+don’t gain any extra information at all from this! If the output is |+⟩ or |−⟩ and
+we measure it we will have an equal probability to measure 0 or 1! So how do we
+fix this? The patch as it turns out is relatively simple. Rather than applying the
+Hadamard gate once, we use it four times: twice on each qubit, once before and once
+after applying the oracle. This allows us to get the qubit back into a pure state so
+the output is deterministic. We also need to invert both the output and input qubits
+to have the CNOT gate inside the variable gates function as intended. What we find
+is that when we measure the qubits they will yeild state |11⟩ if the oracle is static
+and |01⟩ if the oracle is variable.
+q0 X H
+Oracle
+H
+q1 X H H
+The final circuit
+While this may seem like a rather contrived scenario, the generalization of this to
+multi bit gates leads directly to Shor’s period finding algorithm which breaks RSA.
+Chapter 5
+The Quantum Approximate
+Optimization Algorithm
+The Quantum Approximate Optimization Algorithm (QAOA) is based off of an ap-
+proach to quantum computing called Adiabatic Quantum Computing. The theory
+behind this revolves around the concept of the Adiabatic Principal which was origi-
+nally stated says ”A physical system remains in its instantaneous eigenstate if a given
+perturbation is acting on it slowly enough and if there is a gap between the eigenvalue
+and the rest of the Hamiltonian’s spectrum.” (Born, Fock, 1928). Restated in more
+familiar terms, this states that if a system is in the ground state of a certain Hamil-
+tonian, if you change the Hamiltonian gradually enough, the system will remain in
+the ground state even if what that ground state is changes. The application of this
+is called the Variational Method and gives rise to Variational Quantum Computing
+(VQC). What this allows us to do is to take a computer and put it in a state with
+a trivial ground state, then change the Hamiltonian to one with a ground state we
+wish to find and measure the computer to find what the ground state of that new
+Hamiltonian is. This can be useful if we are able to construct a Hamiltonian who’s
+ground state corresponds to the solution to a problem. It should be noted that QAOA
+is a special case of the more generic algorithm the Variational Quantum Eigensolver.
+This leaves open the question ”How do we construct this Hamiltonian?” or, even
+more crucially, ”What problems can we construct Hamiltonians for?” The answer to
+the second is easier than the first so we will start with it.
+5.1 QUBOs
+In general the problems that are suited for QAOA are Quadratic Unconstrained Bi-
+nary Optimization (QUBO) problems. As the name suggests, these are optimization
+problems who’s variables are binary, who’s objective function is quadratic and is un-
+constrained. While binary is fairly straightforward (variables can have one of two
+values: True or False), for those unfamiliar with optimization problems the concept
+of a quadratic objective function may be unfamiliar so we will take a short detour
+to discuss optimization problems. Optimization problems are a vibrant and growing
+12 Chapter 5. The Quantum Approximate Optimization Algorithm
+field of study in computer science; they consist of problems for which we have a func-
+tion on multiple variables and want to find the assignment of those variables that
+maximizes the output of the function. This function is called the objective function.
+In quantum computing we correspond each variable with a qubit; this is why the
+problem must be binary: qubits can only be measured in one of two states. While
+the objective function need not be quadratic, it must be convex (or near to it) as
+otherwise the qubits would be able to tunnel between local minima. However, there
+are few problems we want to solve which have a nonquadratic, convex objective func-
+tion. While optimization problems are normally subject to constraint functions, in
+a quantum computer we have no way to constrain the values the qubits are able to
+take. This means that while it is possible to solve constrained optimization problems
+by incorporating the constraints into the objective function as extremely negatively
+weighted solutions (Dupuy, Hullo,2019) (Pusey-Nazzaro, Date, 2020), the impacts on
+performance make the task futile.
+5.2 Writing a Hamiltonian
+So we have picked a QUBO, how do we encode it for a quantum computer? We will
+take Max-Cut as an example. Max-Cut is in particular a good example as any QUBO
+can be reduced to it by a simple transformation. The Max-Cut problem is a graph
+algorithm which asks us to bi-partition the graph such that we maximize the number
+of edges we cut through. In the general case this is NP-Hard, however, we should
+be careful to note that for many graphs, the maximum cut can be obtained exactly
+in polynomial time by negating the weights and taking the minimum cut. Max-Cut
+is also of particular interest as solving the most likely assignment of magnetic spins
+in an Ising model is exactly equivalent to Max-Cut. First, let’s lay out the problem
+we want to solve. We want the Hamiltonian Hc such that Hc |x⟩ is equal to the cost
+function C(x) |x⟩. We begin by expanding the cost function where Q is the coefficient
+matrix and c is the linear terms:
+C(x) = xT Qx + cT x =
+n∑
+i,s=1
+Qij xixj +
+n∑
+i=1
+cixi
+The crucial relation that allows this conversion to work is that
+Zi |x⟩ = (−1)xi = 1 − 2xi =⇒ I − Zi
+2 |x⟩ = xi
+Where Zi is the Pauli Z gate on the ith qubit and I is the identity gate. This allows
+us to substitute xi for I−Zi
+2 in our cost function to directly obtain the Hamiltonian:
+n∑
+i,s=1
+Qij
+I − Zi
+2
+I − Zj
+2 +
+n∑
+i=1
+ci
+I − Zi
+2
+With some expansion this yields
+n∑
+i,j=1
+Qij
+4 +
+n∑
+i=1
+ci
+2 −
+n∑
+i=1
+(
+n∑
+j=1
+Qij
+4 )Zi −
+n∑
+j=1
+(
+n∑
+i=1
+Qij
+4 )Zj −
+n∑
+i=1
+ci
+2 Zi +
+n∑
+i,j=1
+Qij
+4 ZiZj
+5.3. Writing the Hamiltonian of Max-Cut instance 13
+And then with some more rearranging we get the general Hamiltonian
+n∑
+i,j=1
+Qij ZiZj
+4 −
+n∑
+i=1
+1
+2 (ci +
+n∑
+j=1
+Qij )Zi + (
+n∑
+i,j=1
+Qij
+4 +
+n∑
+i=1
+ci
+2 )
+5.3 Writing the Hamiltonian of Max-Cut instance
+So, lets try out our fancy new technique on a toy problem, find the max-cut of the
+graph G:
+0
+1
+2
+This graph will have the adjacency matrix A and we can convert from the adjacency
+matrix to the quadratic program by defining a binary variable (xi) for each node i
+where xi = 1 if node i is in the first partition and 0 if it is in the second. This gives
+us the elegant notation for a prospective solution x where x is a vector of length |V |
+where each element corresponds to one of our variables. This gives us
+(1 − xi)xj + (1 − xj )xi = −2xixj + xi + xj
+such that −2xixj + xi + xj = 1 if and only if i and j are in opposite parts of the
+bipartition and 0 otherwise. This yields the overall objective function
+arg max
+x∈{0,1}|V |
+∑
+(i,j)∈E
+(−2xixj + xi + xj )
+Note that we never multiply more than 2 variables together making this a quadratic
+function. Alternatively, given the adjacency matrix A:
+A =
+
+
+0 1 0
+1 0 1
+0 1 0
+
+ =⇒ C(x) = 1
+4
+2∑
+i,j=0
+(Aij − xixj )2
+such that
+Qij = −Aij
+and
+ci =
+2∑
+j=0
+Aij
+Then we may simply substitute these as Q and c:
+n∑
+i,j=1
+−Aij ZiZj
+4 −
+n∑
+i=1
+1
+2(
+2∑
+j=0
+Aij +
+n∑
+j=1
+−Aij )Zi + (
+n∑
+i,j=1
+−Aij
+4 +
+n∑
+i=1
+∑2
+j=0 Aij
+2 )
+Chapter 6
+Ideas for Chapter 6 revision
+6.1 Basic terminology
+Define the following terms.
+• Hilbert space
+• Hermitian matrix
+• state |ψ⟩ of a quantum system
+• energy of a system in state |ψ⟩
+• ground state: lowest energy state ψ∗ = argmin ... for all ψ ∈ H (hilbert space)
+• Hamiltonian
+– is considered to be an “operator”
+– matrix representation as a Hermitian matrix
+– role = describing possible energy of the system
+• The notation H |x⟩
+• Energy of a system in the state |ψ⟩: the expected value of ψ with respect to H
+denoted as ⟨ψ|H|ψ⟩
+6.2 Variational method
+Goal: approximate ground state ψ∗ and lowest energy E∗
+Steps: Two main steps
+1. Choose trial state (aka ansatz) |ψ(θ)⟩
+2. Vary θ to minimize E(θ) = ⟨ψ(θ)|H|ψ(θ)⟩ and θ∗ = argmin ... E(θ) for all
+θ
+16 Chapter 6. Ideas for Chapter 6 revision
+Implications:
+• E(θ∗) is an upper bound for E∗
+• |ψ(θ∗)⟩ approximates |ψ∗⟩
+6.3 Variational Quantum Circuit
+VQC = QC that depends on θ
+Then, show the big picture, i.e., picture like slide page 8
+6.4 Quadratic programs
+General description. Then discuss QUBO followed by material in section 6.1
+6.5 Max-Cut and QUBO problem corresponding
+to Max-Cut
+6.5.1 Max-Cut
+Input:
+Output:
+Example instance of a max-cut problem (Part of the first paragraph in 6.3)
+Example solution to the problem, i.e., a cut
+Cost function
+Hardness of Max-cut
+6.5.2 QUBO problem corresponding to Max-cut
+Contents in this subsection should be as analogous to the previous subsection as
+possible (with the exception of the subsubsection concerning hardness).
+Writing a Hamiltonian
+Material in 6.2 and parts of 6.3
+Chapter 7
+credits
+Bloch sphere diagram from glosser.ca
+https://commons.wikimedia.org/wiki/File:Bloch Sphere.svg
+}$). It should be however noted that is not always possible to decompose the state of a quantum computer into the product of individual bits. For example the state
+\[\frac{1}{\sqrt{2}}\begin{pmatrix}
+1\\0\\1\\0    
+\end{pmatrix}\]
+cannot be produced by combining qubits. This state is called a ``Bell State" or the qubits as a ``Bell Pair". Any time qubits cannot be separated like this they are called "entangled" and indeed this is the same as the physics meaning of the term as it is impossible to measure one of the qubits without immediately measuring the other. Observe that so long as qubits are \emph{not} entangled it is possible to represent their states classically using a number of bits linearly proportional to the number of qubits. However, once the state of the quantum computer is highly entangled it requires exponentially many classical bits to represent the system as every time we add another qubit we multiply the number of entries in the vector representing the system by 2. This is the principal that underlies quantum advantage and also why so many quantum algorithms can be performed in classical time: they simply don't require sufficiently entangled qubits. 
+\chapter{Quantum Logic Gates and the Deutsch Oracle}
+\section{Single Qubit Gates}
+Quantum logic gates, hereafter referred to as quantum gates or simply gates, are often written as matrices. To see an example, let us look at the simplest possible gate: the identity gate. The identity gate is written as either I, 1 or $\big[\begin{smallmatrix}1&0\\0&1\end{smallmatrix}\big]$. Those familiar with linear algebra will recognize this as the identity matrix; that is, the matrix such that when it is multiplied by any matrix A yields A. Indeed, this is how we arithmetically apply gates: we multiply our starting vector by the gate. It is a simple exercise to see that I*A=A for all $A\in\mathbb{C}^2$. Next, let us examine the NOT gate. The NOT gate, or Pauli-X gate often written as X represents the matrix $\big[\begin{smallmatrix}0&1\\1&0\end{smallmatrix}\big]$ and encodes a rotation of $\pi$ radians around the X axis of the Bloch sphere. It is easy to see that $X*\ket{1}=\ket{0}$ and visa versa so the terminology of it as the not gate is suitable. There is also the Pauli Y and Pauli Z gates which each encode a $\pi$ radians rotation around the Y and Z axes respectively and are represented by the matricies
+\[X= \begin{bmatrix}0&1\\1&0\end{bmatrix}\ \   
+Y = \begin{bmatrix}0 & -i \\i & 0\end{bmatrix} \ \ 
+Z = \begin{bmatrix}1 & 0 \\0 & -1\end{bmatrix}
+\]
+Note that for all of these matrices, squaring them yields I. Further note that \emph{including} Y all of these gates applied to the pure states ($\ket{0}$ and $\ket{1}$) will keep them in a pure state and visa versa for mixed states. Note that 
+\[\ket{0} \cdot Y = \begin{pmatrix}1 \\ 0 \end{pmatrix} \cdot \begin{pmatrix}0 & -i \\ i & 0\end{pmatrix} = \begin{pmatrix}0 \\ i\end{pmatrix} = (i)\ket{1} \]
+is still a pure state as when measured will always yield 1. An important side note is that exponentiating each of these matrices yields the parameterized version:
+\[e^{i\theta X}= R_x(\theta)= \begin{bmatrix} cos(\theta) & i sin(\theta) \\ i sin(\theta) & cos(\theta) \end{bmatrix}\ \ \ 
+e^{i\theta Y}=R_y(\theta) = \begin{bmatrix}
+cos(\frac{\theta}{2}) & -sin(\frac{\theta}{2}) \\
+sin(\frac{\theta}{2}) & cos(\frac{\theta}{2}) \\
+\end{bmatrix}\]
+\[
+e^{i\theta Z}=R_z(\theta) = \begin{bmatrix}
+e^{-i\frac{\theta}{2}} & 0 \\
+0 & e^{i\frac{\theta}{2}} \\
+\end{bmatrix}\] 
+Where the parameterized version encodes a rotation of $\theta$ degrees around the designated axis. \newline
+One of the most important gates is the Hadamard gate, notated H. This is the gate which takes a qubit in a pure state and puts it into the equal super position. It is given by the matrix 
+\[\frac{1}{\sqrt{2}}\begin{bmatrix}
+1 & 1 \\
+1 & -1
+\end{bmatrix}\]
+We have a special name for H applied to $\ket{0}$ and $\ket{1}$:
+\[\ket{+}=\ket{0}\cdot H= \frac{1}{\sqrt{2}}\begin{pmatrix}1 & 1 \\ 1 & -1\end{pmatrix}\begin{pmatrix}1 \\ 0\end{pmatrix} = \frac{1}{\sqrt{2}}\begin{pmatrix}1 \\ 1\end{pmatrix}\]
+
+\[\ket{-}=\ket{1}\cdot H= \frac{1}{\sqrt{2}}\begin{pmatrix}1 & 1 \\ 1 & -1\end{pmatrix}\begin{pmatrix}0 \\ 1\end{pmatrix} = \frac{1}{\sqrt{2}}\begin{pmatrix}1 \\ -1\end{pmatrix}\]
+
+\section{Multiple Qubit Gates}
+We will once again begin with the simplest gate: the Identity. Again, this will be the 2n x 2n identity matrix where n is the number of qubits in our circuit. The second simplest way to assemble a multiple qubit gate is to apply a gate to just one qubit in a circuit. The way we do this is using the Kronecker product. 
+In order to apply a gate, say Z to bit i in an n bit quantum circuit we must simply 
+\[I\otimes I \otimes \dots \text{\emph{i times}}\dots Z...\otimes I\]
+Given the cumbersome nature of this notation, this is commonly notated as $Z_i$. However, this isn't much of a multiple qubit gate, its really only applying a single qubit gate to a single qubit in a multiqubit circuit. To get our first \emph{real} multi-qubit gate we should look towards the controlled not gate. The target bit is flipped (i.e., a NOT gate is applied to it) if the control bit is in the state $\ket{1}$. 
+The controlled not gate, written CNOT or CX, is simplest and most important multiple qubit gate. As its name suggests, this is a controlled X gate; that is, it has 2 qubits: a control and a target bit. When the control bit is in a pure state, this gate will apply the X gate to the target bit only if the control bit is $\ket{1}$. When the control bit is in a mixed state this gate exhibits more sophisticated behaviour which can be calculated using its matrix representation on 2 wires where 0 is the control bit and 1 is the target bit:
+\[
+\text{CX} = \begin{bmatrix}
+1 & 0 & 0 & 0 \\
+0 & 1 & 0 & 0 \\
+0 & 0 & 0 & 1 \\
+0 & 0 & 1 & 0 \\
+\end{bmatrix}
+\]
+It should be noted that together with the Pauli X,Y,Z and Hadamard gate, these 5 gates are sufficient to encode any quantum program (DiVincenzo,1995). Indeed, since the Hadamard gate together with the Phase gate ($S \text{ or } P= \large[\begin{smallmatrix} 1&0\\0&i \end{smallmatrix}\large]$) generates the Pauli gates, only 3 gates (P,H and CX) are sufficient to write any program! It should be noted however, that a program written in such a way can be simulated in polynomial time on a classical computer via the Gottesman-Knill Theorem because it is not possible using only those gates to yield enough entangled qubits without exponentially many gates. The technique we used to generate the CX gate is as follows: for the control bit, combine it with $\ket{0}\bra{0}$ and for the target bit, combine it with $\ket{1}\bra{0}$. Use identity gates for all other qubits as we did before:
+\[CZ=(\ket{0}\bra{0})\otimes I+(\ket{1}\bra{1})\otimes X\]
+There are an extensive library of circuit identities that have been discovered over the years and a selection of them can be found at \emph{https://learn.qiskit.org/course/ch-gates/basic-circuit-identities}
+\section{The Deusch Oracle Problem}
+The simplest example of Quantum Supremacy is the Deutsch Oracle problem. There are 4 classical 1 bit gates: set 0, set 1, identity and NOT. While one would expect the collection of one bit quantum gates to be far richer, owing to the larger range of values a bit can take (and it is, mind you), it is significantly hampered by a strange principal. All quantum gates must be reversible. That is, for any gate G there exists another gate $G^{-1}$ such that $G*G^{-1}=I$. This is a manifestation of a deep symmetry underlying the physical world called "time symmetry", that is, all quantum interactions must look the same when played forwards and in reverse. As important as a principal as this is it lies far outside the scope of this paper, so the take away we need is this: the quantum analogue of the set 0 and set 1 gates require not one, but two inputs. This is because otherwise it would be impossible to determine what the state of the qubit was before entering the gate solely by the output. We let one of these qubits be the input bit and the other be the output bit. If we assume that all qubits are initialized to $\ket{0}$ before we perform any actions we observe that I applied to the out qubit is sufficient for set $\ket{0}$; X applied to the output qubit is sufficient for set $\ket{1}$; CX with the output qubit as the target qubit is sufficient for identity; and that same CX followed by an X on the output bit is sufficient for NOT. If we let $q_1$ be the output qubit and $q_0$ be the input qubit this gives us
+\[
+   \text{Set $\ket{0}$}= \Qcircuit @C=1.0em @R=1.0em @!R {
+	 	\nghost{ {q}_{0} :  } & \lstick{ {q}_{0} :  } & \qw & \qw\\ 
+	 	\nghost{ {q}_{1} :  } & \lstick{ {q}_{1} :  } & \qw & \qw }
+   \hspace{3 em}
+   \text{Set $\ket{0}$}= \Qcircuit @C=1.0em @R=0.2em @!R { 
+	 	\nghost{ {q}_{0} :  } & \lstick{ {q}_{0} :  } & \qw & \qw & \qw\\ 
+	 	\nghost{ {q}_{1} :  } & \lstick{ {q}_{1} :  } & \gate{\mathrm{X}} & \qw & \qw }\]
+\[
+    \text{Identity= } \Qcircuit @C=1.0em @R=0.8em @!R {
+	 	\nghost{ {q}_{0} :  } & \lstick{ {q}_{0} :  } & \ctrl{1} & \qw & \qw\\ 
+	 	\nghost{ {q}_{1} :  } & \lstick{ {q}_{1} :  } & \targ & \qw & \qw\\  }
+   \hspace{2 em} 
+   \text{NOT= }\Qcircuit @C=1.0em @R=0.2em @!R {
+	 	\nghost{ {q}_{0} :  } & \lstick{ {q}_{0} :  } & \ctrl{1} & \qw & \qw & \qw\\ 
+	 	\nghost{ {q}_{1} :  } & \lstick{ {q}_{1} :  } & \targ & \gate{\mathrm{X}} & \qw & \qw  }
+\]
+%Note that we only have control over the \emph{input bit} which we may set to any state we please, the only way we can change the \emph{output bit} from $\ket{0}$ is by applying one of these gates. Further n
+Note that the input bit is always left unchanged. Now imagine there is a black box which contains one of these gates and we don't know which. We call this box an "oracle". It is easy to see that it requires 2 queries to this oracle on a classical computer to determine what gate is contained within. One query for the result when passed 0 and one for when passed 1. Indeed, on a quantum computer it still requires 2 queries to determine the gate:
+
+\begin{table}[ht]
+\centering
+\begin{minipage}[t]{.45\textwidth}
+  \centering
+  Query 2 
+  \begin{tabular}{c| c c}
+    &\multicolumn{2}{c}{Result of Query 1}\\
+    &0 &1\\
+    \hline
+    0 &Set 0 &Not\\
+    1 &Identity &Set 1\\
+  \end{tabular}
+\end{minipage}\hfill
+\begin{minipage}[t]{.45\textwidth}
+  \centering
+  {Query 2}
+  \begin{tabular}{c| c c}
+    &\multicolumn{2}{c}{Result of Query 1}\\
+    &$\ket{0}$ &$\ket{1}$\\
+    \hline
+    $\ket{0}$ &Set $\ket{0}$ &Not\\
+    $\ket{1}$ &Identity &Set $\ket{1}$\\
+  \end{tabular}
+\end{minipage}
+\end{table}
+However it \emph{is} possible to determine whether the gate is \emph{static} or \emph{variable}. That is, whether it is either one of Set 0 or Set 1 or whether it is one of NOT or Identity. A na\"ive approach actually quite simple. Rather than passing the oracle $\ket{0}$ or $\ket{1}$, we pass it "both". That is, we pass it $\ket{+}$. Recall that we obtain $\ket{+}$ and $\ket{-}$ by beginning with $\ket{0}$ and applying the Hadamard gate to get $\ket{+}$ and $\ket{1}$ for $\ket{-}$. Obviously if it is a static gate this will output $\ket{0}$ or $\ket{1}$ and if it is variable it will output $\ket{-}$ if it is NOT and $\ket{+}$ if it is Identity. While it may appear that we actually determine the exact gate remember that in order to get any output from our quantum computer we must measure the output of this function. What we find is that, tragically, we don't gain any extra information at all from this! If the output is $\ket{+}$ or $\ket{-}$ and we measure it we will have an equal probability to measure 0 or 1! So how do we fix this? The patch as it turns out is relatively simple. Rather than applying the Hadamard gate once, we use it four times: twice on each qubit, once before and once after applying the oracle. This allows us to get the qubit back into a pure state so the output is deterministic. We also need to invert both the output and input qubits to have the CNOT gate inside the variable gates function as intended. What we find is that when we measure the qubits they will yeild state $\ket{11}$ if the oracle is static and $\ket{01}$ if the oracle is variable. 
+\[\Qcircuit @C=1em @R=.7em {
+  \lstick{q_0} &  \gate{\mathrm{X}}&  \gate{\mathrm{H}}& \qw  & \multigate{1}{Oracle} & \qw &  \gate{\mathrm{H}}& \qw &\meter\\
+  \lstick{q_1} &  \gate{\mathrm{X}} & \gate{\mathrm{H}} & \qw & \ghost{Oracle} & \qw &  \gate{\mathrm{H}} & \qw &\meter\\
+}\]
+\begin{center}
+    The final circuit
+\end{center}
+While this may seem like a rather contrived scenario, the generalization of this to multi bit gates leads directly to Shor's period finding algorithm which breaks internet encryption.
+
+\chapter{The Quantum Approximate Optimization Algorithm}
+The Quantum Approximate Optimization Algorithm (QAOA) is based off of an approach to quantum computing called Adiabatic Quantum Computing. The theory behind this revolves around the concept of the Adiabatic Principal which was originally stated says "A physical system remains in its instantaneous eigenstate if a given perturbation is acting on it slowly enough and if there is a gap between the eigenvalue and the rest of the Hamiltonian's spectrum." (Born, Fock, 1928). Restated in more familiar terms, this states that if a system is in the ground state of a certain Hamiltonian, if you change the Hamiltonian gradually enough, the system will remain in the ground state even if what that ground state is changes. The application of this is called the Variational Method and gives rise to Variational Quantum Computing (VQC). What this allows us to do is to take a computer and put it in a state with a trivial ground state, then change the Hamiltonian to one with a ground state we wish to find and measure the computer to find what the ground state of that new Hamiltonian is. This can be useful if we are able to construct a Hamiltonian who's ground state corresponds to the solution to a problem. It should be noted that QAOA is a special case of the more generic algorithm the Variational Quantum Eigensolver. This leaves open the question "How do we construct this Hamiltonian?" or, even more crucially, "What problems can we construct Hamiltonians for?" The answer to the second is easier than the first so we will start with it.
+\section{QUBOs}
+In general the problems that are suited for QAOA are Quadratic Unconstrained Binary Optimization (QUBO) problems. As the name suggests, these are optimization problems who's variables are binary, who's objective function is quadratic and is unconstrained. While binary is fairly straightforward (variables can have one of two values: True or False), for those unfamiliar with optimization problems the concept of a quadratic objective function may be unfamiliar so we will take a short detour to discuss optimization problems. Optimization problems are a vibrant and growing field of study in computer science; they consist of problems for which we have a function on multiple variables and want to find the assignment of those variables that maximizes the output of the function. This function is called the objective function. In quantum computing we correspond each variable with a qubit; this is why the problem must be binary: qubits can only be measured in one of two states. While the objective function need not be quadratic, it must be convex (or near to it) as otherwise the qubits would be able to tunnel between local minima. However, there are few problems we want to solve which have a nonquadratic, convex objective function. While optimization problems are normally subject to constraint functions, in a quantum computer we have no way to constrain the values the qubits are able to take. This means that while it is possible to solve constrained optimization problems by incorporating the constraints into the objective function as extremely negatively weighted solutions (Dupuy, Hullo,2019) (Pusey-Nazzaro, Date, 2020), the impacts on performance make the task futile. 
+\section{Writing a Hamiltonian}
+So we have picked a QUBO, how do we encode it for a quantum computer? We will take Max-Cut as an example. Max-Cut is in particular a good example as any QUBO can be reduced to it by a simple transformation. The Max-Cut problem is a graph algorithm which asks us to bi-partition the graph such that we maximize the number of edges we cut through. In the general case this is NP-Hard, however, we should be careful to note that for many graphs, the maximum cut can be obtained exactly in polynomial time by negating the weights and taking the minimum cut. Max-Cut is also of particular interest as solving the most likely assignment of magnetic spins in an Ising model is exactly equivalent to Max-Cut. First, let's lay out the problem we want to solve. We want the Hamiltonian $H_c$ such that $H_c\ket{x}$ is equal to the cost function $C(x)\ket{x}$. We begin by expanding the cost function where Q is the coefficient matrix and c is the linear terms:
+\[C(x)=x^T Qx+c^ T x=\sum_{i,s=1}^n Q_{ij}x_i x_j +\sum _{i=1} ^n c_i x_i\]
+The crucial relation that allows this conversion to work is that 
+\[Z_i\ket{x}=(-1)^{x_i}=1-2x_i\Longrightarrow \frac{I-Z_i}{2}\ket{x}=x_i\]
+Where $Z_i$ is the Pauli Z gate on the ith qubit and I is the identity gate. This allows us to substitute $x_i$ for $\frac{I-Z_i}{2}$ in our cost function to directly obtain the Hamiltonian:
+\[\sum_{i,s=1}^n Q_{ij}\frac{I-Z_i}{2} \frac{I-Z_j}{2} +\sum _{i=1} ^n c_i \frac{I-Z_i}{2}\]
+With some expansion this yields
+\[\sum_{i,j=1}^n\frac{Q_{ij}}{4}+\sum_{i=1}^n\frac{c_i}{2}-\sum_{i=1}^n(\sum_{j=1}^n\frac{Q_{ij}}{4})Z_i-\sum_{j=1}^n(\sum_{i=1}^n\frac{Q_{ij}}{4})Z_j-\sum_{i=1}^n\frac{c_i}{2}Z_i+\sum_{i,j=1}^n\frac{Q_{ij}}{4}Z_iZ_j\]
+And then with some more rearranging we get the general Hamiltonian
+\[\sum_{i,j=1}^n\frac{Q_{ij}Z_iZ_j}{4}-\sum_{i=1}^n\frac{1}{2}(c_i+\sum_{j=1}^nQ_{ij})Z_i+(\sum_{i,j=1}^n\frac{Q_{ij}}{4}+\sum_{i=1}^n\frac{c_i}{2})\]
+\section{Writing the Hamiltonian of Max-Cut instance}
+So, lets try out our fancy new technique on a toy problem, find the max-cut of the graph G:
+\begin{center}
+\begin{tikzpicture}
+\begin{scope}[every node/.style={circle,thick,draw}]
+    \node (A) at (0,0) {0};
+    \node (B) at (0,3) {1};
+    \node (C) at (3,0) {2};
+\end{scope}
+
+\begin{scope}[>={},
+              every node/.style={fill=white,circle},
+              every edge/.style={draw=black,very thick}]
+    \path [-] (A) edge  (B);
+    \path [-] (B) edge  (C);
+\end{scope}
+\end{tikzpicture}
+\end{center}
+This graph will have the adjacency matrix A and we can convert from the adjacency matrix to the quadratic program by defining a binary variable ($x_i$) for each node i where $x_i=1$ if node i is in the first partition and 0 if it is in the second. This gives us the elegant notation for a prospective solution x where x is a vector of length $|V|$ where each element corresponds to one of our variables. This gives us 
+\[(1-x_i)x_j+(1-x_j)x_i=-2x_ix_j+x_i+x_j\]
+such that $-2x_ix_j+x_i+x_j=1$ if and only if i and j are in opposite parts of the bipartition and 0 otherwise. This yields the overall objective function 
+\[\arg\max_{\mathbf{x} \in \{0,1\}^{|V|}} \sum_{(i,j) \in E} (- 2 x_i x_j + x_i + x_j)\]
+Note that we never multiply more than 2 variables together making this a quadratic function. Alternatively, given the adjacency matrix A:
+\[A=\begin{bmatrix}
+0&1&0\\
+1&0&1\\
+0&1&0
+\end{bmatrix}\Longrightarrow
+C(x) = \frac{1}{4} \sum_{i,j=0}^2 (A_{ij} - x_i x_j)^2\]
+such that  
+\[Q_{ij} =- A_{ij}\]
+and 
+\[c_i = \sum_{j=0}^2 A_{ij}\]
+Then we may simply substitute these as Q and c:
+\[\sum_{i,j=1}^n\frac{-A_{ij}Z_iZ_j}{4}-\sum_{i=1}^n\frac{1}{2}(\sum_{j=0}^2 A_{ij}+\sum_{j=1}^n-A_{ij})Z_i+(\sum_{i,j=1}^n\frac{-A_{ij}}{4}+\sum_{i=1}^n\frac{\sum_{j=0}^2 A_{ij}}{2})\]  
+\section{The Variational Method}
+
+\chapter{Ideas for Chapter 6 revision}
+
+\section{Basic terminology}
+
+Define the following terms.
+\begin{itemize}
+    \item Hilbert space
+    \item Hermitian matrix
+    \item state $\ket{\psi}$ of a quantum system
+    \item energy of a system in state $\ket{\psi}$
+    \item ground state: lowest energy state $\psi^* = $ argmin ... for all $\psi \in \cal{H}$ (hilbert space)
+    \item Hamiltonian
+    \begin{itemize}
+        \item is considered to be an ``operator''
+        \item matrix representation as a Hermitian matrix
+        \item role = describing possible energy of the system
+    \end{itemize}
+    \item The notation $H\ket{x}$
+    \item Energy of a system in the state $\ket{\psi}$: the expected value of $\psi$ with respect to $H$ denoted as $\langle \psi | H | \psi \rangle$
+\end{itemize}
+
+\section{Variational method}
+
+\begin{description}
+\item[Goal:] approximate ground state $\psi^*$ and lowest energy $E^*$
+\item[Steps:] Two main steps
+
+\begin{enumerate}
+    \item Choose trial state (aka ansatz) $\ket{\psi(\theta)}$
+    \item Vary $\theta$ to minimize $E(\theta) = \langle \psi(\theta) | H | \psi(\theta)\rangle$ and $\theta^* = $ argmin ... $E(\theta)$ for all $\theta$
+\end{enumerate}
+\end{description}
+
+Implications:
+\begin{itemize}
+\item $E(\theta^*)$ is an upper bound for $E^*$
+\item $\ket{\psi(\theta^*)}$ approximates $\ket{\psi^*}$
+\end{itemize}
+
+\section{Variational Quantum Circuit}
+
+VQC = QC that depends on $\theta$
+
+Then, show the big picture, i.e., picture like slide page 8
+
+\section{Quadratic programs}
+
+General description. Then discuss QUBO followed by material in section 6.1
+
+\section{Max-Cut and QUBO problem corresponding to Max-Cut}
+
+\subsection{Max-Cut}
+
+\begin{description}
+    \item[Input:]
+    \item[Output:]
+\end{description}
+
+Example instance of a max-cut problem (Part of the first paragraph in 6.3)
+
+Example solution to the problem, i.e., a cut
+
+Cost function
+
+\subsubsection{Hardness of Max-cut}
+
+
+\subsection{QUBO problem corresponding to Max-cut}
+
+Contents in this subsection should be as analogous to the previous subsection as possible (with the exception of the subsubsection concerning hardness).
+
+\subsubsection{Writing a Hamiltonian}
+
+Material in 6.2 and parts of 6.3
+
+
+
+\chapter{credits}
+Bloch sphere diagram from glosser.ca \newline
+https://commons.wikimedia.org/wiki/File:Bloch\_Sphere.svg
+\end{document}

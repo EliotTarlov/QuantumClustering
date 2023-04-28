@@ -1,0 +1,46 @@
+Chapter 7
+Ideas for Chapter 6 revision
+7.1 Basic terminology
+Define the following terms.
+• Hilbert space
+• Hermitian matrix
+• state |ψ⟩ of a quantum system
+• energy of a system in state |ψ⟩
+• ground state: lowest energy state ψ∗ = argmin ... for all ψ ∈ H (hilbert space)
+• Hamiltonian
+– is considered to be an “operator”
+– matrix representation as a Hermitian matrix
+– role = describing possible energy of the system
+• The notation H|x⟩
+• Energy of a system in the state |ψ⟩: the expected value of ψ with respect to H
+denoted as ⟨ψ|H|ψ⟩
+7.2 Variational method
+Goal: approximate ground state ψ∗ and lowest energy E∗
+Steps: Two main steps
+1. Choose trial state (aka ansatz) |ψ(θ)⟩
+2. Vary θ to minimize E(θ) = ⟨ψ(θ)|H|ψ(θ)⟩ and θ∗ = argmin ... E(θ) for all
+θ
+18 Chapter 7. Ideas for Chapter 6 revision
+Implications:
+• E(θ∗) is an upper bound for E∗
+• |ψ(θ∗)⟩ approximates |ψ∗⟩
+7.3 Variational Quantum Circuit
+VQC = QC that depends on θ
+Then, show the big picture, i.e., picture like slide page 8
+7.4 Quadratic programs
+General description. Then discuss QUBO followed by material in section 6.1
+7.5 Max-Cut and QUBO problem corresponding
+to Max-Cut
+7.5.1 Max-Cut
+Input:
+Output:
+Example instance of a max-cut problem (Part of the first paragraph in 6.3)
+Example solution to the problem, i.e., a cut
+Cost function
+Hardness of Max-cut
+7.5.2 QUBO problem corresponding to Max-cut
+Contents in this subsection should be as analogous to the previous subsection as
+possible (with the exception of the subsubsection concerning hardness).
+Writing a Hamiltonian
+Material in 6.2 and parts of 6.3
+

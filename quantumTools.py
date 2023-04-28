@@ -1,6 +1,9 @@
 import numpy as np
 from latex2sympy2 import latex2sympy as l2s
 import sympy
+from qiskit.visualization import circuit_drawer
+def drawLatex(qc): #type(qc)=qiskit.QuantumCircuit
+   circuit_drawer(qc,output="latex_source")
 class A(np.ndarray):
   def __new__(cls, input_array):
     obj = np.asarray(input_array).view(cls)
@@ -13,7 +16,9 @@ class A(np.ndarray):
     if type(self[0][0])==type(np.complex128(0)):
       pass
     return np.ndarray.__repr__(self)
-   
+def info_matrix(qc, conv=complex):
+   '''gives the matrix representation of a quantum circuit with the function "conv" applied to each of its elements. Requires qiskit imported as qk.'''
+   print([conv(y) for y in [z for z in np.array(qk.quantum_info.Operator(qc))]])
 def bmatrix(A:A):
   """formats to LaTeX bmatrix"""
   if len(A.shape) > 2:
@@ -94,7 +99,7 @@ CY=(zero@zero.T)%I+(one@one.T)%Y
 CZ=(zero@zero.T)%I+(one@one.T)%Z
 CCX=((zero%zero)@(zero.T%zero.T))%I+(zero%one)@(zero.T%one.T)%I+(one%zero)@(one.T%zero.T)%I+((one%one)@(one.T%one.T))%X
 def gateOnWire(i:int,wires:int,gate:A):
-  if 0>=i<wires:
+  if not 0<=i<wires:
     raise(ValueError("invalid qubit index"))
   for wire in range(wires):
     if wire==0:

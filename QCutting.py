@@ -14,7 +14,7 @@ def createRandomScattering(num_points,scale=1,x_trans=0,y_trans=0):
    return [(random()*scale+x_trans,random()*scale+y_trans) for _ in range(num_points)]
    
 
-def createTestClustering(clusters,max_num_points=9, max_dist_btw_clusters=4):
+def createTestClustering(clusters,max_num_points=4, max_dist_btw_clusters=4):
    '''create a set of points with a number of clustered together scatterings'''
    out=[]
    for _ in range(clusters):
@@ -57,14 +57,12 @@ def printClustering(G,solution):
       else:
          colors.append("pink")
    nx.draw_networkx(G,nx.get_node_attributes(G,'pos'), node_color=colors,with_labels=True,edgelist=[])
-   plt.show()  
    
 def printGraphWithWeights(G,solution):
    labels=nx.get_edge_attributes(G,'weight')
    labels= {k:str(v)[:4] for k, v in labels.items()}
    nx.draw_networkx_edge_labels(G,nx.get_node_attributes(G,'pos'),edge_labels=labels,bbox=dict(alpha=0))
    printClustering(G,solution)
-   plt.show()
 
 
 def mincut_obj(solution, graph):
@@ -105,7 +103,8 @@ def createQAOACirc(G, theta):
     Returns:
         qc: qiskit circuit
     """
-    nqubits = len(G.nodes())
+    nqubits = len(G.nodes()) #each qubit corresponds to a vertex in the graph and each boolean assignment for each point corresponds with 
+   #what side of the cut the vertex is in. 
     p = len(theta)//2  # number of alternating unitaries
     qc = QuantumCircuit(nqubits)
     
@@ -153,58 +152,53 @@ def get_expectation(G, shots=512):
         return compute_expectation(counts, G)
     
     return execute_circ
-    
-
+def file_to_list(f): #takes a textiowrapper aka the thing returned by open("filename.txt")
+    from ast import literal_eval
+    with open(f) as f:
+         return literal_eval(f.read())
+def plot_counts(counts):
+      #we need to sort to get the bar chart in decent order
+   sorted_counts = sorted(counts.items())
+   # extract the keys and values from the sorted dictionary
+   keys = [item[0] for item in sorted_counts]
+   values = [item[1] for item in sorted_counts]
+   # create a bar chart from the sorted dictionary
+   plt.bar(keys, values, align='center')
+   plt.show()
 
 if __name__=="__main__":
    #handle command line arguments
    parser = argparse.ArgumentParser()
    parser.add_argument('-p', '--points',type=str,help='List of points. To be given as the path to a file which contains a list of tuples eg [(1,2),(2,3),...,(2.1,.01)]. If no points are given, random')
-   #parser.add_argument('-c','--clusters', default=2, type=int, help="number of clusters to divide the data into. If empty, 2 is default.")
+   parser.add_argument('-l', '--layers',type=str,help="Number of layers to apply to the Quantum Circuit. More is more expensive but more accurate.")
    args = parser.parse_args()
 
    # Checking if the random option was given
    if not args.points:
       points = createTestClustering(2) #args.clusters)#2 random clusters
    else:
-      from ast import literal_eval
-      with open(args.points) as f:
-         points=literal_eval(f.read())#convert from a string into a list of tuples. God bless this function my code was *ugly*.
-
+      points=file_to_list(args.points)
+   if not args.layers:
+      layers=1
+   else:
+      layers=1*layers
 
    #create graph  
-   G=createGraph(points)    
-   get_expectation(G)
-   res = minimize(get_expectation(G),[1.0, 1.0],method='COBYLA') #get_expectation returns the function execute_circ which takes in a 
-   #1D vector of even dimension. 
+   G=createGraph(points)   
+   res = minimize(get_expectation(G),[1.0, 1.0]*(layers),method='COBYLA') #get_expectation returns the function 
+   #execute_circ which takes in a 1D vector of even dimension. 
    backend = Aer.get_backend('qasm_simulator')
    backend.shots = 512
-
-   # Adjacency is essentially a matrix which tells you which nodes are connected. This matrix is given as a sparse matrix, so we need to
-   # convert it to a dense matrix
-   adjacency = nx.adjacency_matrix(G).todense()
-   nqubits = len(points) #each qubit corresponds to a vertex in the graph and each boolean assignment for each point corresponds with 
-   #what side of the cut the vertex is in. 
-
    qc_res = createQAOACirc(G, res.x)
-   createQAOACirc(G, res.x).draw(output="mpl")
+   qc_res.draw(output="mpl")
    plt.show()
+   
    counts =backend.run(qc_res, seed_simulator=10).result().get_counts()
-   #we need to sort to get the bar chart in decent order
-   sorted_counts = sorted(counts.items())
-   # extract the keys and values from the sorted dictionary
-   keys = [item[0] for item in sorted_counts]
-   values = [item[1] for item in sorted_counts]
-
-   # create a bar chart from the sorted dictionary
-   plt.bar(keys, values, align='center')
-   plt.show()
-
+   plot_counts(counts)
+   #show maximum cut
    bestSolution= max(counts, key=counts.get)
    printClustering(G,bestSolution)
    # printGraphWithWeights(G,bestSolution)
-   # create a scatter plot with colored points
-   #plt.scatter([p[0] for p in points], [p[1] for p in points], c=colors, cmap='cool', vmin=0, vmax=1)
    plt.show()
 
 
